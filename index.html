@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>중국 역사 지도 - 전국/초한/삼국</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Malgun Gothic', sans-serif; }
+        #map { height: 100vh; width: 100%; cursor: crosshair; }
+        .leaflet-interactive { cursor: pointer !important; }
+
+        .legend {
+            position: absolute;
+            bottom: 30px;
+            left: 10px;
+            background: rgba(30,30,30,0.95);
+            color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            max-width: 200px;
+        }
+        .legend h3 { margin-bottom: 10px; font-size: 14px; color: #ffd700; }
+        .legend-item { display: flex; align-items: center; margin: 5px 0; font-size: 11px; }
+        .legend-color { width: 16px; height: 16px; border-radius: 50%; margin-right: 8px; border: 2px solid rgba(255,255,255,0.5); }
+        .wei { background: #4a90d9; }
+        .shu { background: #2ecc71; }
+        .wu { background: #e74c3c; }
+        .neutral { background: #f39c12; }
+        .pass { background: #e91e63; }
+        .battle { background: #9b59b6; }
+        .chohan { background: #00bcd4; }
+        .chunqiu { background: #8bc34a; }
+        .warring { background: #ff9800; }
+        .mountain { background: #8d6e63; }
+
+        .info-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(30,30,30,0.95);
+            color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            max-width: 280px;
+        }
+        .info-panel h2 { font-size: 16px; margin-bottom: 10px; color: #ffd700; }
+        .info-panel p { font-size: 11px; color: #ccc; line-height: 1.5; }
+        .info-panel .count { font-size: 13px; color: #4a90d9; margin-top: 8px; }
+        .info-panel .source { font-size: 10px; color: #888; margin-top: 5px; }
+
+        .city-label {
+            background: none !important;
+            border: none !important;
+            box-shadow: none !important;
+            font-size: 11px;
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 2px 2px 3px #000, -1px -1px 2px #000, 1px -1px 2px #000, -1px 2px 2px #000;
+            white-space: nowrap;
+        }
+
+        .modern-label {
+            background: none !important;
+            border: none !important;
+            box-shadow: none !important;
+            font-size: 9px;
+            color: #00e5ff;
+            text-shadow: 1px 1px 2px #000, -1px -1px 2px #000;
+            white-space: nowrap;
+            opacity: 0.85;
+        }
+
+        .marker-dot {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.9);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.6);
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .marker-dot:hover {
+            transform: scale(1.4);
+            box-shadow: 0 0 12px rgba(255,255,255,0.8);
+        }
+
+        .marker-pass {
+            width: 26px;
+            height: 26px;
+            border-radius: 3px;
+            border: 2px solid rgba(255,255,255,0.9);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.6);
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+        .marker-pass:hover {
+            transform: scale(1.4);
+            box-shadow: 0 0 12px rgba(255,255,255,0.8);
+        }
+
+        .leaflet-popup-content-wrapper {
+            background: rgba(30,30,30,0.95);
+            color: #fff;
+            border-radius: 8px;
+            max-width: 340px;
+        }
+        .leaflet-popup-tip { background: rgba(30,30,30,0.95); }
+        .leaflet-popup-content { font-size: 12px; max-height: 350px; overflow-y: auto; }
+        .leaflet-popup-content h4 { margin-bottom: 5px; color: #ffd700; font-size: 14px; }
+        .leaflet-popup-content .modern { color: #aaa; font-size: 11px; }
+        .leaflet-popup-content .kingdom { font-weight: bold; margin-top: 5px; }
+        .leaflet-popup-content .desc { margin-top: 8px; font-size: 11px; color: #ccc; line-height: 1.4; }
+        .leaflet-popup-content .figures { margin-top: 6px; font-size: 11px; color: #7ecfff; line-height: 1.4; }
+        .leaflet-popup-content .figures span { color: #aaa; }
+        .leaflet-popup-content .battles { margin-top: 6px; font-size: 11px; color: #ff9e9e; line-height: 1.4; }
+        .leaflet-popup-content .battles span { color: #aaa; }
+        .leaflet-popup-content .game-source { margin-top: 6px; font-size: 10px; color: #888; }
+
+        .filter-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(30,30,30,0.95);
+            color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            max-width: 220px;
+        }
+        .filter-panel h3 { margin-bottom: 12px; font-size: 14px; color: #ffd700; }
+        .filter-section { margin-bottom: 12px; }
+        .filter-section h4 { font-size: 11px; color: #aaa; margin-bottom: 6px; border-bottom: 1px solid #444; padding-bottom: 4px; }
+        .filter-item { display: flex; align-items: center; margin: 4px 0; font-size: 11px; cursor: pointer; }
+        .filter-item:hover { color: #ffd700; }
+        .filter-item input { margin-right: 8px; cursor: pointer; }
+        .filter-item .color-dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; border: 1px solid rgba(255,255,255,0.5); }
+        .filter-btn {
+            background: #4a90d9;
+            border: none;
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            margin-right: 5px;
+            margin-top: 8px;
+        }
+        .filter-btn:hover { background: #357abd; }
+        .filter-btn.off { background: #666; }
+
+        .search-panel {
+            position: absolute;
+            top: 10px;
+            left: 240px;
+            z-index: 1000;
+        }
+        .search-panel input {
+            width: 220px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(30,30,30,0.95);
+            color: #fff;
+            font-size: 13px;
+            outline: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        .search-panel input::placeholder { color: #888; }
+        .search-results {
+            margin-top: 4px;
+            background: rgba(30,30,30,0.95);
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+        }
+        .search-results.active { display: block; }
+        .search-result-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            color: #ccc;
+            border-bottom: 1px solid #444;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .search-result-item:last-child { border-bottom: none; }
+        .search-result-item:hover { background: rgba(74,144,217,0.3); color: #fff; }
+        .search-result-item .sr-name { font-weight: bold; color: #fff; }
+        .search-result-item .sr-region { font-size: 10px; color: #888; }
+        .search-result-item .sr-type { font-size: 10px; padding: 1px 6px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+
+    <div class="search-panel">
+        <input type="text" id="search-input" placeholder="🔍 도시/전투지 검색 (한글/漢字)" autocomplete="off">
+        <div class="search-results" id="search-results"></div>
+    </div>
+
+    <div class="filter-panel">
+        <h3>🗺️ 필터</h3>
+
+        <div class="filter-section">
+            <h4>시대별</h4>
+            <label class="filter-item"><input type="checkbox" id="filter-samguk" checked><span class="color-dot" style="background:#4a90d9"></span>삼국지</label>
+            <label class="filter-item"><input type="checkbox" id="filter-chohan" checked><span class="color-dot" style="background:#00bcd4"></span>초한지</label>
+            <label class="filter-item"><input type="checkbox" id="filter-chunqiu" checked><span class="color-dot" style="background:#8bc34a"></span>춘추시대</label>
+            <label class="filter-item"><input type="checkbox" id="filter-warring" checked><span class="color-dot" style="background:#ff9800"></span>전국시대</label>
+            <label class="filter-item"><input type="checkbox" id="filter-mountain" checked><span class="color-dot" style="background:#8d6e63"></span>명산(名山)</label>
+        </div>
+
+        <div class="filter-section">
+            <h4>삼국지 세력</h4>
+            <label class="filter-item"><input type="checkbox" id="filter-wei" checked><span class="color-dot" style="background:#4a90d9"></span>위(魏)</label>
+            <label class="filter-item"><input type="checkbox" id="filter-shu" checked><span class="color-dot" style="background:#2ecc71"></span>촉(蜀)</label>
+            <label class="filter-item"><input type="checkbox" id="filter-wu" checked><span class="color-dot" style="background:#e74c3c"></span>오(吳)</label>
+            <label class="filter-item"><input type="checkbox" id="filter-neutral" checked><span class="color-dot" style="background:#f39c12"></span>중립/쟁탈</label>
+        </div>
+
+        <div class="filter-section">
+            <h4>기타</h4>
+            <label class="filter-item"><input type="checkbox" id="filter-pass" checked><span class="color-dot" style="background:#e91e63; border-radius:2px"></span>관문(關)</label>
+            <label class="filter-item"><input type="checkbox" id="filter-battle" checked><span class="color-dot" style="background:#9b59b6"></span>전투지</label>
+            <label class="filter-item"><input type="checkbox" id="filter-labels" checked><span class="color-dot" style="background:#fff"></span>도시명 표시</label>
+            <label class="filter-item"><input type="checkbox" id="filter-modern"><span class="color-dot" style="background:#00e5ff"></span>현재명 표시</label>
+        </div>
+
+        <div>
+            <button class="filter-btn" onclick="showAll()">전체 선택</button>
+            <button class="filter-btn off" onclick="hideAll()">전체 해제</button>
+        </div>
+    </div>
+
+    <div class="info-panel">
+        <h2>중국 역사 지도</h2>
+        <p>전국시대 + 초한지 + 삼국지 통합</p>
+        <p class="count" id="city-count">로딩 중...</p>
+        <p class="source">데이터: three-kingdoms-data.js</p>
+        <p style="margin-top:8px; font-size:10px; color:#888;">마커 호버 → 상세정보<br>마우스 휠 → 확대/축소</p>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="three-kingdoms-data.js"></script>
+    <script>
+        const map = L.map('map', {
+            center: [33, 110],
+            zoom: 5,
+            minZoom: 4,
+            maxZoom: 18
+        });
+
+        // 위성 지형 레이어
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: '&copy; ESRI',
+            maxZoom: 18
+        }).addTo(map);
+
+        const colors = {
+            wei: '#4a90d9',
+            shu: '#2ecc71',
+            wu: '#e74c3c',
+            neutral: '#f39c12',
+            pass: '#e91e63',
+            battle: '#9b59b6',
+            chohan: '#00bcd4',
+            chunqiu: '#8bc34a',
+            warring: '#ff9800',
+            mountain: '#8d6e63'
+        };
+
+        const kingdomNames = {
+            wei: '위(魏)',
+            shu: '촉(蜀)',
+            wu: '오(吳)',
+            neutral: '중립/쟁탈',
+            pass: '관(關)',
+            battle: '전투지',
+            chohan: '초한지',
+            chunqiu: '춘추시대',
+            warring: '전국시대',
+            mountain: '명산'
+        };
+
+        // 현재 도시명 매핑 (고대명 → 현재명)
+        const modernNames = {
+            // 유주(幽州)
+            "북평": "베이징(北京)", "계": "베이징(北京)", "대군": "다퉁(大同) 인근",
+            "양평": "랴오양(辽阳)", "요동": "단둥(丹东) 인근",
+            "우북평": "탕산(唐山) 인근", "상곡": "장자커우(张家口) 인근",
+            "어양": "미윈(密云) 인근",
+            // 병주(并州)
+            "진양": "태원(太原)", "상당": "창즈(长治)", "하동": "윈청(运城)",
+            "서하": "뤼량(吕梁)", "운중": "후허하오터(呼和浩特) 인근",
+            "오원": "바오터우(包头) 인근", "상산": "스자좡(石家庄) 인근",
+            // 기주(冀州)
+            "업": "안양(安阳) 인근", "한단": "한단(邯郸)", "남피": "난피(南皮)",
+            "위군": "한단(邯郸) 인근", "거록": "싱타이(邢台)", "중산": "딩저우(定州)",
+            "발해": "창저우(沧州)", "청하": "싱타이(邢台) 인근", "평원": "더저우(德州)",
+            "하간": "헝수이(衡水) 인근",
+            // 청주(青州)
+            "임치": "쯔보(淄博)", "제남": "지난(济南)", "북해": "웨이팡(潍坊)",
+            "낙안": "둥잉(东营) 인근", "낭야": "린이(临沂)",
+            "동래": "옌타이(烟台)", "성양": "르자오(日照)",
+            // 연주(兖州)
+            "연주": "옌저우(兖州)", "진류": "카이펑(开封) 인근", "복양": "푸양(濮阳)",
+            "정도": "허쩌(菏泽) 인근", "동군": "랴오청(聊城) 인근",
+            "임성": "지닝(济宁)", "양": "상추(商丘) 인근",
+            // 서주(徐州)
+            "팽성": "쉬저우(徐州)", "하비": "쉬이(睢宁) 인근", "소패": "페이현(沛县)",
+            "광릉": "양저우(扬州)", "동해": "롄윈강(连云港)",
+            "회음": "화이안(淮安)",
+            // 예주(豫州)
+            "허창": "쉬창(许昌)", "여남": "주마뎬(驻马店)", "수춘": "서우현(寿县)",
+            "영천": "위저우(禹州)", "완": "난양(南阳)", "남양": "난양(南阳)",
+            "진": "저우커우(周口)", "의양": "신양(信阳)",
+            "초": "보저우(亳州)", "하채": "펑타이(凤台)",
+            "박망": "팡청(方城) 인근",
+            // 사예(司隸)
+            "낙양": "뤄양(洛阳)", "장안": "시안(西安)", "홍농": "링바오(灵宝)",
+            "화음": "화인(华阴)", "하남": "뤄양(洛阳) 인근",
+            "하내": "자오쭤(焦作)",
+            // 양주(凉州)
+            "농서": "룽시(陇西)", "천수": "톈수이(天水)", "무위": "우웨이(武威)",
+            "금성": "란저우(兰州)", "돈황": "둔황(敦煌)", "안정": "핑량(平凉)",
+            "부풍": "바오지(宝鸡)", "주천": "주취안(酒泉)", "장액": "장예(张掖)",
+            "서평": "시닝(西宁)", "남안": "룽시(陇西) 인근",
+            "상규": "톈수이(天水) 인근", "진창": "바오지(宝鸡)",
+            // 형주(荊州)
+            "양양": "샹양(襄阳)", "신야": "신예(新野)", "강릉": "징저우(荆州)",
+            "강하": "우한(武汉)", "장사": "창사(长沙)", "무릉": "창더(常德)",
+            "장가계": "장자제(张家界)", "계양": "천저우(郴州)", "영릉": "융저우(永州)",
+            "적벽": "치비(赤壁)", "이릉": "이창(宜昌)",
+            "당양": "당양(当阳)", "번성": "샹양(襄阳) 인근",
+            "공안": "공안(公安)", "자귀": "쯔구이(秭归)",
+            "상용": "주산(竹山)", "방릉": "팡현(房县)",
+            // 익주(益州)
+            "성도": "청두(成都)", "한중": "한중(汉中)", "강주": "충칭(重庆)",
+            "영안": "펑제(奉节)", "면죽": "더양(德阳) 인근",
+            "재동": "쯔퉁(梓潼)", "낭중": "랑중(阆中)",
+            "부성": "몐양(绵阳)", "낙성": "광한(广汉)",
+            "건녕": "취징(曲靖)", "영창": "바오산(保山)",
+            "운남": "다리(大理) 인근", "건위": "러산(乐山)",
+            "파서": "랑중(阆中) 인근", "파중": "바중(巴中)",
+            // 양주(揚州)
+            "건업": "난징(南京)", "오군": "쑤저우(苏州)", "회계": "샤오싱(绍兴)",
+            "시상": "주장(九江)", "합비": "허페이(合肥)", "여강": "루장(庐江)",
+            "예장": "난창(南昌)", "무창": "우한(武汉) 우창구",
+            "여요": "위야오(余姚)", "임해": "타이저우(台州)",
+            "단양": "쉬안청(宣城) 인근", "선성": "쉬안청(宣城)",
+            // 교주(交州)
+            "번우": "광저우(广州)", "교지": "하노이(河内)",
+            "합포": "베이하이(北海)", "창오": "우저우(梧州)",
+            "울림": "구이강(贵港)", "계림": "구이린(桂林)",
+            "남해": "광저우(广州) 인근", "고요": "자오칭(肇庆)",
+            "곡강": "샤오관(韶关)",
+            // 초한지
+            "함양": "셴양(咸阳)", "패현": "페이현(沛县)", "하상": "쑤첸(宿迁)",
+            // 삼국지 전투지
+            "계교": "광쭝(广宗) 인근", "백마": "화현(滑县) 인근",
+            "오소": "옌진(延津) 인근", "창정": "화현(华县) 인근",
+            "유성": "차오양(朝阳)", "장판파": "당양(当阳) 인근",
+            "맥성": "당양(当阳) 인근", "소요진": "허페이(合肥)",
+            "석정": "쳰산(潜山) 인근", "서성": "안캉(安康) 인근",
+            "동흥": "차오후(巢湖) 인근", "단곡": "톈수이(天水) 인근",
+            // 전국시대
+            "대량": "카이펑(开封)", "신정": "신정(新郑)",
+            "안읍": "윈청(运城) 인근", "낙읍": "뤄양(洛阳)",
+            "역양": "시안(西安) 인근",
+            "화양": "신정(新郑) 인근", "번오": "링서우(灵寿) 인근",
+            "제서": "더저우(德州) 인근", "목야": "치현(淇县) 인근",
+            // 춘추시대 전투지
+            "필": "형양(荥阳) 인근", "안": "지난(济南) 인근",
+            "수갈": "창거(长葛) 인근", "홍수": "저우커우(周口) 인근",
+            "한원": "한청(韩城) 인근",
+            // 삼국지 게임 전투지
+            "유수구": "우후(芜湖)/차오후(巢湖) 인근",
+            "음평도": "원현(文县)",
+            "강유관": "장여우(江油)",
+            "우림": "훙후(洪湖) 인근",
+            "기곡": "한중(汉中) 북쪽 친링(秦岭) 산중",
+            "상방곡": "바오지(宝鸡) 인근 오장원 부근",
+            "천탕산": "한중(汉中) 인근",
+            "철롱산": "시허(西和) 인근",
+            "낙봉파": "광한(广汉) 인근 뤄청(罗城)"
+        };
+
+        // MAP_DATA는 three-kingdoms-data.js에서 로드
+        const mapData = {
+                    regions: [
+                        { name: "幽州", korean: "유주", lat: 40.5, lng: 117.5, color: "#4a90d9" },
+                        { name: "并州", korean: "병주", lat: 38.5, lng: 111.5, color: "#4a90d9" },
+                        { name: "冀州", korean: "기주", lat: 38.0, lng: 115.5, color: "#4a90d9" },
+                        { name: "青州", korean: "청주", lat: 36.5, lng: 118.5, color: "#4a90d9" },
+                        { name: "兖州", korean: "연주", lat: 35.5, lng: 116.0, color: "#4a90d9" },
+                        { name: "徐州", korean: "서주", lat: 34.0, lng: 118.0, color: "#4a90d9" },
+                        { name: "豫州", korean: "예주", lat: 33.5, lng: 114.5, color: "#4a90d9" },
+                        { name: "司隸", korean: "사예", lat: 34.5, lng: 111.0, color: "#4a90d9" },
+                        { name: "凉州", korean: "양주(량)", lat: 37.0, lng: 102.0, color: "#4a90d9" },
+                        { name: "雍州", korean: "옹주", lat: 35.0, lng: 107.5, color: "#4a90d9" },
+                        { name: "荊州", korean: "형주", lat: 30.0, lng: 112.0, color: "#f39c12" },
+                        { name: "揚州", korean: "양주", lat: 30.0, lng: 119.0, color: "#e74c3c" },
+                        { name: "益州", korean: "익주", lat: 29.0, lng: 104.0, color: "#2ecc71" },
+                        { name: "交州", korean: "교주", lat: 23.0, lng: 110.0, color: "#e74c3c" }
+                    ],
+                    cities: [
+                        { lat: 34.75, lng: 113.28, name: "虎牢关", korean: "호뢰관", region: "사예(司隸)", kingdom: "pass", desc: "삼영전 여포! 유관장이 여포와 싸운 곳.", source: "KOEI+와룡전" },
+                        { lat: 34.78, lng: 113.05, name: "汜水关", korean: "사수관", region: "사예(司隸)", kingdom: "pass", desc: "화웅을 관우가 벤 곳. 온주참화웅.", source: "KOEI+와룡전" },
+                        { lat: 34.58, lng: 109.50, name: "潼关", korean: "동관", region: "사예(司隸)", kingdom: "pass", desc: "마초vs조조 동관 전투. 관중 진입로.", source: "KOEI+와룡전" },
+                        { lat: 34.52, lng: 110.93, name: "函谷关", korean: "함곡관", region: "사예(司隸)", kingdom: "pass", desc: "전국시대부터의 천하의 요새.", source: "와룡전" },
+                        { lat: 33.72, lng: 110.40, name: "武关", korean: "무관", region: "사예(司隸)", kingdom: "pass", desc: "관중 남부 관문. 남양에서 장안 진입로.", source: "와룡전" },
+                        { lat: 34.37, lng: 107.23, name: "散关", korean: "산관", region: "옹주(雍州)", kingdom: "pass", desc: "대산관. 관중-한중 연결로.", source: "와룡전" },
+                        { lat: 32.19, lng: 105.53, name: "剑阁", korean: "검각", region: "익주(益州)", kingdom: "pass", desc: "촉의 천험의 요새. 종회도 뚫지 못한 관문.", source: "KOEI+와룡전" },
+                        { lat: 32.15, lng: 105.47, name: "剑门关", korean: "검문관", region: "익주(益州)", kingdom: "pass", desc: "검각의 관문. 일부당관 만부막개.", source: "KOEI+와룡전" },
+                        { lat: 33.40, lng: 106.92, name: "阳平关", korean: "양평관", region: "익주(益州)", kingdom: "pass", desc: "한중 방어의 핵심 관문.", source: "KOEI+와룡전" },
+                        { lat: 40.08, lng: 113.30, name: "雁门关", korean: "안문관", region: "병주(并州)", kingdom: "pass", desc: "만리장성의 관문. 흉노 방어선.", source: "와룡전" },
+                        { lat: 40.28, lng: 116.07, name: "居庸关", korean: "거용관", region: "유주(幽州)", kingdom: "pass", desc: "베이징 북방 관문.", source: "와룡전" },
+                        { lat: 40.35, lng: 119.75, name: "山海关", korean: "산해관", region: "유주(幽州)", kingdom: "pass", desc: "만리장성 동쪽 끝. 요동 관문.", source: "와룡전" },
+                        { lat: 33.87, lng: 107.50, name: "褒斜道", korean: "포사도", region: "익주(益州)", kingdom: "pass", desc: "한중-관중 연결 잔도.", source: "와룡전" },
+                        { lat: 33.85, lng: 108.35, name: "子午谷", korean: "자오곡", region: "옹주(雍州)", kingdom: "pass", desc: "위연이 제안한 기습로. 한중-장안 최단거리 험로.", source: "와룡전" },
+                        { lat: 34.92, lng: 111.07, name: "孟津", korean: "맹진", region: "사예(司隸)", kingdom: "pass", desc: "황하 도하 요충지. 팔로제후 회맹지.", source: "와룡전" },
+                        { lat: 30.82, lng: 111.00, name: "西陵峡", korean: "서릉협", region: "형주(荊州)", kingdom: "pass", desc: "삼협의 관문. 장강 요충지.", source: "와룡전" },
+                        { lat: 34.18, lng: 108.78, name: "蓝田关", korean: "남전관", region: "옹주(雍州)", kingdom: "pass", desc: "장안 동남쪽 관문.", source: "와룡전" },
+                        { lat: 32.03, lng: 108.07, name: "米仓道", korean: "미창도", region: "익주(益州)", kingdom: "pass", desc: "한중-파촉 연결로.", source: "와룡전" },
+                        { lat: 39.90, lng: 116.40, name: "北平", korean: "북평", region: "유주(幽州)", kingdom: "wei", desc: "공손찬의 본거지. 현재 베이징 일대.", source: "KOEI+와룡전" },
+                        { lat: 39.70, lng: 116.10, name: "蓟", korean: "계", region: "유주(幽州)", kingdom: "wei", desc: "유주의 치소. 연나라 수도였던 곳.", source: "KOEI" },
+                        { lat: 40.80, lng: 111.65, name: "代郡", korean: "대군", region: "유주(幽州)", kingdom: "wei", desc: "북방 방어 요충지. 흉노 접경.", source: "KOEI+와룡전" },
+                        { lat: 41.12, lng: 122.07, name: "襄平", korean: "양평", region: "유주(幽州)", kingdom: "wei", desc: "요동의 중심. 공손연의 근거지.", source: "와룡전" },
+                        { lat: 40.10, lng: 124.38, name: "遼東", korean: "요동", region: "유주(幽州)", kingdom: "wei", desc: "요동반도. 공손씨 세력권.", source: "KOEI+와룡전" },
+                        { lat: 39.63, lng: 118.18, name: "右北平", korean: "우북평", region: "유주(幽州)", kingdom: "wei", desc: "유주 동부. 공손찬 세력권.", source: "와룡전" },
+                        { lat: 40.78, lng: 114.88, name: "上谷", korean: "상곡", region: "유주(幽州)", kingdom: "wei", desc: "만리장성 부근 요충지.", source: "와룡전" },
+                        { lat: 41.27, lng: 117.97, name: "漁陽", korean: "어양", region: "유주(幽州)", kingdom: "wei", desc: "유주 북부 방어선.", source: "와룡전" },
+                        { lat: 37.87, lng: 112.55, name: "晋阳", korean: "진양", region: "병주(并州)", kingdom: "wei", desc: "병주의 치소. 현재 태원시.", source: "KOEI+와룡전" },
+                        { lat: 36.12, lng: 113.12, name: "上党", korean: "상당", region: "병주(并州)", kingdom: "wei", desc: "태행산맥의 요충지.", source: "KOEI+와룡전" },
+                        { lat: 35.48, lng: 110.45, name: "河东", korean: "하동", region: "병주(并州)", kingdom: "wei", desc: "황하 동쪽. 관우의 고향.", source: "KOEI" },
+                        { lat: 38.42, lng: 110.47, name: "西河", korean: "서하", region: "병주(并州)", kingdom: "wei", desc: "황하 서쪽 지역.", source: "와룡전" },
+                        { lat: 39.33, lng: 111.68, name: "云中", korean: "운중", region: "병주(并州)", kingdom: "wei", desc: "북방 흉노 접경지.", source: "와룡전" },
+                        { lat: 40.65, lng: 109.97, name: "五原", korean: "오원", region: "병주(并州)", kingdom: "wei", desc: "최북단 방어 거점.", source: "와룡전" },
+                        { lat: 38.05, lng: 114.48, name: "常山", korean: "상산", region: "병주(并州)", kingdom: "wei", desc: "조자룡의 고향.", source: "와룡전" },
+                        { lat: 37.73, lng: 115.70, name: "邺", korean: "업", region: "기주(冀州)", kingdom: "wei", desc: "조조의 본거지. 동작대가 있던 곳.", source: "KOEI+와룡전" },
+                        { lat: 38.04, lng: 114.48, name: "邯郸", korean: "한단", region: "기주(冀州)", kingdom: "wei", desc: "조나라의 옛 수도.", source: "KOEI" },
+                        { lat: 38.37, lng: 116.70, name: "南皮", korean: "남피", region: "기주(冀州)", kingdom: "wei", desc: "원담이 패사한 곳.", source: "KOEI+와룡전" },
+                        { lat: 37.50, lng: 115.05, name: "魏郡", korean: "위군", region: "기주(冀州)", kingdom: "wei", desc: "위나라 이름의 유래.", source: "KOEI" },
+                        { lat: 37.07, lng: 114.35, name: "钜鹿", korean: "거록", region: "기주(冀州)", kingdom: "wei", desc: "황건적 장각의 근거지.", source: "KOEI+와룡전" },
+                        { lat: 38.45, lng: 115.48, name: "中山", korean: "중산", region: "기주(冀州)", kingdom: "wei", desc: "유비의 고향으로 알려진 곳.", source: "KOEI+와룡전" },
+                        { lat: 37.95, lng: 116.85, name: "渤海", korean: "발해", region: "기주(冀州)", kingdom: "wei", desc: "원소가 처음 거병한 곳.", source: "KOEI+와룡전" },
+                        { lat: 37.52, lng: 116.30, name: "清河", korean: "청하", region: "기주(冀州)", kingdom: "wei", desc: "기주 동부 지역.", source: "와룡전" },
+                        { lat: 36.85, lng: 115.25, name: "广平", korean: "광평", region: "기주(冀州)", kingdom: "wei", desc: "업 남쪽 지역.", source: "와룡전" },
+                        { lat: 37.62, lng: 114.05, name: "赵郡", korean: "조군", region: "기주(冀州)", kingdom: "wei", desc: "옛 조나라 영역.", source: "와룡전" },
+                        { lat: 38.92, lng: 115.52, name: "河间", korean: "하간", region: "기주(冀州)", kingdom: "wei", desc: "기주 중부.", source: "와룡전" },
+                        { lat: 37.38, lng: 116.62, name: "平原", korean: "평원", region: "기주(冀州)", kingdom: "wei", desc: "유비가 평원상을 지낸 곳.", source: "KOEI+와룡전" },
+                        { lat: 38.20, lng: 117.35, name: "乐陵", korean: "낙릉", region: "기주(冀州)", kingdom: "wei", desc: "기주 동북부.", source: "와룡전" },
+                        { lat: 36.70, lng: 118.48, name: "临淄", korean: "임치", region: "청주(青州)", kingdom: "wei", desc: "제나라 옛 수도. 청주 치소.", source: "KOEI+와룡전" },
+                        { lat: 36.88, lng: 117.00, name: "济南", korean: "제남", region: "청주(青州)", kingdom: "wei", desc: "조조가 제남상을 지낸 곳.", source: "KOEI+와룡전" },
+                        { lat: 36.78, lng: 119.17, name: "北海", korean: "북해", region: "청주(青州)", kingdom: "wei", desc: "공융이 다스렸던 곳.", source: "KOEI+와룡전" },
+                        { lat: 37.17, lng: 118.30, name: "乐安", korean: "낙안", region: "청주(青州)", kingdom: "wei", desc: "청주 동부 지역.", source: "KOEI+와룡전" },
+                        { lat: 36.19, lng: 117.12, name: "泰山", korean: "태산", region: "청주(青州)", kingdom: "wei", desc: "오악 중 동악. 황건적 출몰지.", source: "KOEI" },
+                        { lat: 35.58, lng: 118.35, name: "琅琊", korean: "낭야", region: "청주(青州)", kingdom: "wei", desc: "제갈량 가문의 본적지.", source: "와룡전" },
+                        { lat: 36.45, lng: 120.38, name: "东莱", korean: "동래", region: "청주(青州)", kingdom: "wei", desc: "산동반도 동부. 태사자 출신지.", source: "와룡전" },
+                        { lat: 35.23, lng: 119.12, name: "城阳", korean: "성양", region: "청주(青州)", kingdom: "wei", desc: "청주 남부 해안.", source: "와룡전" },
+                        { lat: 35.42, lng: 116.58, name: "兖州", korean: "연주", region: "연주(兖州)", kingdom: "wei", desc: "조조가 처음 기반을 잡은 곳.", source: "KOEI" },
+                        { lat: 34.85, lng: 114.35, name: "陈留", korean: "진류", region: "연주(兖州)", kingdom: "wei", desc: "조조가 거병한 곳. 전위 고향.", source: "KOEI+와룡전" },
+                        { lat: 35.35, lng: 115.02, name: "濮阳", korean: "복양", region: "연주(兖州)", kingdom: "wei", desc: "조조와 여포가 싸운 곳. 황하 남안.", source: "KOEI+와룡전" },
+                        { lat: 35.23, lng: 115.65, name: "定陶", korean: "정도", region: "연주(兖州)", kingdom: "wei", desc: "조조가 여포를 격파한 곳.", source: "KOEI" },
+                        { lat: 35.95, lng: 116.00, name: "东郡", korean: "동군", region: "연주(兖州)", kingdom: "wei", desc: "황하 남안의 요충지.", source: "KOEI+와룡전" },
+                        { lat: 35.57, lng: 117.28, name: "任城", korean: "임성", region: "연주(兖州)", kingdom: "wei", desc: "연주 동부 지역.", source: "KOEI" },
+                        { lat: 35.05, lng: 117.90, name: "鲁", korean: "노", region: "연주(兖州)", kingdom: "wei", desc: "공자의 고향. 노나라 옛 땅.", source: "와룡전" },
+                        { lat: 34.45, lng: 115.65, name: "梁", korean: "양", region: "연주(兖州)", kingdom: "wei", desc: "연주 남부.", source: "와룡전" },
+                        { lat: 35.25, lng: 116.30, name: "山阳", korean: "산양", region: "연주(兖州)", kingdom: "wei", desc: "헌제 최후의 봉지.", source: "와룡전" },
+                        { lat: 34.26, lng: 117.19, name: "彭城", korean: "팽성", region: "서주(徐州)", kingdom: "wei", desc: "서주의 치소. 유비가 여포에게 빼앗김.", source: "KOEI+와룡전" },
+                        { lat: 34.32, lng: 117.95, name: "下邳", korean: "하비", region: "서주(徐州)", kingdom: "wei", desc: "여포 최후의 땅. 관우 항복지.", source: "KOEI+와룡전" },
+                        { lat: 34.05, lng: 116.97, name: "小沛", korean: "소패", region: "서주(徐州)", kingdom: "wei", desc: "유비가 자주 머물렀던 곳.", source: "KOEI+와룡전" },
+                        { lat: 33.96, lng: 119.43, name: "广陵", korean: "광릉", region: "서주(徐州)", kingdom: "wu", desc: "양주로 가는 길목.", source: "KOEI+와룡전" },
+                        { lat: 34.73, lng: 118.18, name: "东海", korean: "동해", region: "서주(徐州)", kingdom: "wei", desc: "미축, 미부인의 고향.", source: "KOEI+와룡전" },
+                        { lat: 33.27, lng: 118.33, name: "淮阴", korean: "회음", region: "서주(徐州)", kingdom: "wu", desc: "한신의 고향. 회수 유역.", source: "와룡전" },
+                        { lat: 34.92, lng: 118.75, name: "朐县", korean: "구현", region: "서주(徐州)", kingdom: "wei", desc: "서주 해안 지역.", source: "와룡전" },
+                        { lat: 34.02, lng: 113.85, name: "许昌", korean: "허창", region: "예주(豫州)", kingdom: "wei", desc: "조조가 헌제를 모신 곳.", source: "KOEI+와룡전" },
+                        { lat: 33.00, lng: 114.35, name: "汝南", korean: "여남", region: "예주(豫州)", kingdom: "wei", desc: "원소, 원술 형제의 고향.", source: "KOEI+와룡전" },
+                        { lat: 34.80, lng: 114.30, name: "官渡", korean: "관도", region: "예주(豫州)", kingdom: "battle", desc: "관도대전(200). 조조가 원소 격파.", source: "KOEI" },
+                        { lat: 32.95, lng: 115.82, name: "寿春", korean: "수춘", region: "예주(豫州)", kingdom: "neutral", desc: "원술이 황제를 칭한 곳.", source: "KOEI+와룡전" },
+                        { lat: 33.75, lng: 113.65, name: "颍川", korean: "영천", region: "예주(豫州)", kingdom: "wei", desc: "순욱, 순유, 곽가 등 인재의 고향.", source: "KOEI+와룡전" },
+                        { lat: 33.00, lng: 112.53, name: "宛", korean: "완", region: "예주(豫州)", kingdom: "neutral", desc: "남양군 치소. 장수가 조조를 공격한 곳. 전위 전사지.", source: "KOEI+와룡전" },
+                        { lat: 33.26, lng: 112.53, name: "南阳", korean: "남양", region: "예주(豫州)", kingdom: "neutral", desc: "남양군. 제갈량 은거지 융중 인근.", source: "KOEI+와룡전" },
+                        { lat: 34.27, lng: 114.98, name: "陈", korean: "진", region: "예주(豫州)", kingdom: "wei", desc: "진나라 옛 땅.", source: "와룡전" },
+                        { lat: 32.13, lng: 114.07, name: "义阳", korean: "의양", region: "예주(豫州)", kingdom: "wei", desc: "예주 남부.", source: "와룡전" },
+                        { lat: 32.98, lng: 113.52, name: "博望", korean: "박망", region: "예주(豫州)", kingdom: "shu", desc: "제갈량 첫 전투. 박망파 소각.", source: "와룡전" },
+                        { lat: 33.87, lng: 115.77, name: "谯", korean: "초", region: "예주(豫州)", kingdom: "wei", desc: "조조 가문의 고향.", source: "와룡전" },
+                        { lat: 33.03, lng: 116.98, name: "下蔡", korean: "하채", region: "예주(豫州)", kingdom: "neutral", desc: "회수 유역.", source: "와룡전" },
+                        { lat: 34.62, lng: 112.45, name: "洛阳", korean: "낙양", region: "사예(司隸)", kingdom: "wei", desc: "후한의 수도. 동탁에 의해 불탐.", source: "KOEI+와룡전" },
+                        { lat: 34.27, lng: 108.95, name: "长安", korean: "장안", region: "사예(司隸)", kingdom: "wei", desc: "서한의 수도. 동탁 천도지.", source: "KOEI+와룡전" },
+                        { lat: 34.45, lng: 110.08, name: "弘农", korean: "홍농", region: "사예(司隸)", kingdom: "wei", desc: "함곡관이 있는 요충지.", source: "KOEI+와룡전" },
+                        { lat: 34.52, lng: 109.48, name: "华阴", korean: "화음", region: "사예(司隸)", kingdom: "wei", desc: "화산 기슭. 동관 인근.", source: "와룡전" },
+                        { lat: 34.90, lng: 111.45, name: "河南", korean: "하남", region: "사예(司隸)", kingdom: "wei", desc: "낙양 인근 지역.", source: "와룡전" },
+                        { lat: 35.08, lng: 113.85, name: "河内", korean: "하내", region: "사예(司隸)", kingdom: "wei", desc: "황하 북쪽. 사마의 고향.", source: "와룡전" },
+                        { lat: 35.73, lng: 103.73, name: "陇西", korean: "농서", region: "양주(凉州)", kingdom: "wei", desc: "강족과의 접경지역.", source: "KOEI+와룡전" },
+                        { lat: 34.58, lng: 105.90, name: "天水", korean: "천수", region: "양주(凉州)", kingdom: "wei", desc: "강유의 고향. 북벌 목표.", source: "KOEI+와룡전" },
+                        { lat: 33.40, lng: 105.70, name: "街亭", korean: "가정", region: "양주(凉州)", kingdom: "battle", desc: "가정 전투(228). 마속 패전.", source: "KOEI" },
+                        { lat: 37.93, lng: 102.63, name: "武威", korean: "무위", region: "양주(凉州)", kingdom: "wei", desc: "하서회랑의 요충지.", source: "KOEI+와룡전" },
+                        { lat: 35.55, lng: 106.68, name: "安定", korean: "안정", region: "양주(凉州)", kingdom: "wei", desc: "옹주 북부 지역.", source: "KOEI+와룡전" },
+                        { lat: 36.05, lng: 103.80, name: "金城", korean: "금성", region: "양주(凉州)", kingdom: "wei", desc: "현재 란저우. 마초 활동지.", source: "KOEI+와룡전" },
+                        { lat: 39.73, lng: 98.50, name: "敦煌", korean: "돈황", region: "양주(凉州)", kingdom: "wei", desc: "실크로드의 관문.", source: "KOEI+와룡전" },
+                        { lat: 34.92, lng: 108.93, name: "扶风", korean: "부풍", region: "옹주(雍州)", kingdom: "wei", desc: "마등, 마초 가문의 근거지.", source: "KOEI" },
+                        { lat: 39.00, lng: 100.45, name: "酒泉", korean: "주천", region: "양주(凉州)", kingdom: "wei", desc: "하서회랑 서부.", source: "와룡전" },
+                        { lat: 38.63, lng: 102.20, name: "张掖", korean: "장액", region: "양주(凉州)", kingdom: "wei", desc: "하서회랑 중부.", source: "와룡전" },
+                        { lat: 36.62, lng: 101.77, name: "西平", korean: "서평", region: "양주(凉州)", kingdom: "wei", desc: "강족 접경. 현재 시닝 인근.", source: "와룡전" },
+                        { lat: 35.00, lng: 104.62, name: "南安", korean: "남안", region: "양주(凉州)", kingdom: "wei", desc: "농서 남부.", source: "와룡전" },
+                        { lat: 34.03, lng: 103.85, name: "狄道", korean: "적도", region: "양주(凉州)", kingdom: "wei", desc: "강족 방어선.", source: "와룡전" },
+                        { lat: 35.58, lng: 105.72, name: "上邽", korean: "상규", region: "양주(凉州)", kingdom: "wei", desc: "천수 인근.", source: "와룡전" },
+                        { lat: 34.17, lng: 106.45, name: "祁山", korean: "기산", region: "양주(凉州)", kingdom: "battle", desc: "제갈량 북벌의 주 목표지.", source: "와룡전" },
+                        { lat: 34.37, lng: 107.23, name: "陈仓", korean: "진창", region: "양주(凉州)", kingdom: "wei", desc: "제갈량 북벌 격전지.", source: "와룡전" },
+                        { lat: 35.10, lng: 107.87, name: "北地", korean: "북지", region: "양주(凉州)", kingdom: "wei", desc: "옹주 북부.", source: "와룡전" },
+                        { lat: 32.01, lng: 112.13, name: "襄阳", korean: "양양", region: "형주(荊州)", kingdom: "neutral", desc: "형주의 핵심. 유표의 치소.", source: "KOEI+와룡전" },
+                        { lat: 32.52, lng: 112.42, name: "新野", korean: "신야", region: "형주(荊州)", kingdom: "shu", desc: "유비가 삼고초려한 인근.", source: "KOEI+와룡전" },
+                        { lat: 30.35, lng: 112.24, name: "江陵", korean: "강릉", region: "형주(荊州)", kingdom: "neutral", desc: "형주 남부 중심. 관우 근거지.", source: "KOEI+와룡전" },
+                        { lat: 30.58, lng: 114.30, name: "江夏", korean: "강하", region: "형주(荊州)", kingdom: "wu", desc: "유기가 지킨 곳. 현재 우한.", source: "KOEI+와룡전" },
+                        { lat: 28.19, lng: 113.00, name: "长沙", korean: "장사", region: "형주(荊州)", kingdom: "wu", desc: "황충, 위연 고향. 손견이 다스림.", source: "KOEI+와룡전" },
+                        { lat: 29.05, lng: 111.70, name: "武陵", korean: "무릉", region: "형주(荊州)", kingdom: "wu", desc: "형주 남부 4군.", source: "KOEI+와룡전" },
+                        { lat: 29.12, lng: 110.48, name: "張家界", korean: "장가계", region: "형주(荊州)", kingdom: "neutral", desc: "무릉군 지역. 현재 세계적 관광지. 아바타 촬영지.", source: "현대" },
+                        { lat: 25.78, lng: 113.05, name: "桂阳", korean: "계양", region: "형주(荊州)", kingdom: "wu", desc: "형주 남부 4군. 조운 점령.", source: "KOEI+와룡전" },
+                        { lat: 26.23, lng: 111.62, name: "零陵", korean: "영릉", region: "형주(荊州)", kingdom: "wu", desc: "형주 남부 4군.", source: "KOEI+와룡전" },
+                        { lat: 29.72, lng: 113.90, name: "赤壁", korean: "적벽", region: "형주(荊州)", kingdom: "battle", desc: "적벽대전(208). 손유연합 승리.", source: "KOEI+와룡전" },
+                        { lat: 30.70, lng: 111.30, name: "夷陵", korean: "이릉", region: "형주(荊州)", kingdom: "battle", desc: "이릉대전(222). 유비 대패.", source: "KOEI+와룡전" },
+                        { lat: 31.70, lng: 113.38, name: "章陵", korean: "장릉", region: "형주(荊州)", kingdom: "neutral", desc: "형주 북부.", source: "와룡전" },
+                        { lat: 30.32, lng: 109.47, name: "巫县", korean: "무현", region: "형주(荊州)", kingdom: "shu", desc: "삼협 입구. 형주-익주 경계.", source: "와룡전" },
+                        { lat: 32.22, lng: 110.23, name: "上庸", korean: "상용", region: "형주(荊州)", kingdom: "neutral", desc: "맹달이 유봉을 배신한 곳. 현재 죽산현.", source: "와룡전" },
+                        { lat: 31.17, lng: 110.37, name: "秭归", korean: "자귀", region: "형주(荊州)", kingdom: "wu", desc: "삼협 지역. 굴원의 고향.", source: "와룡전" },
+                        { lat: 31.04, lng: 112.13, name: "当阳", korean: "당양", region: "형주(荊州)", kingdom: "neutral", desc: "장판파 전투지. 조자룡 활약.", source: "와룡전" },
+                        { lat: 29.38, lng: 113.12, name: "华容", korean: "화용", region: "형주(荊州)", kingdom: "neutral", desc: "화용도. 관우가 조조를 놓아줌.", source: "와룡전" },
+                        { lat: 30.28, lng: 113.85, name: "夏口", korean: "하구", region: "형주(荊州)", kingdom: "wu", desc: "장강과 한수 합류점.", source: "와룡전" },
+                        { lat: 32.05, lng: 110.73, name: "房陵", korean: "방릉", region: "형주(荊州)", kingdom: "neutral", desc: "상용 인근. 현재 방현. 한수 상류.", source: "와룡전" },
+                        { lat: 30.55, lng: 111.05, name: "公安", korean: "공안", region: "형주(荊州)", kingdom: "shu", desc: "유비가 형주 통치시 본거지.", source: "와룡전" },
+                        { lat: 31.45, lng: 112.80, name: "樊城", korean: "번성", region: "형주(荊州)", kingdom: "wei", desc: "양양 대안. 관우 수공 목표.", source: "와룡전" },
+                        { lat: 30.67, lng: 104.07, name: "成都", korean: "성도", region: "익주(益州)", kingdom: "shu", desc: "촉한의 수도. 유비 황제 즉위.", source: "KOEI+와룡전" },
+                        { lat: 33.07, lng: 107.03, name: "汉中", korean: "한중", region: "익주(益州)", kingdom: "shu", desc: "촉과 위의 접경. 한중왕 즉위.", source: "KOEI+와룡전" },
+                        { lat: 34.40, lng: 106.10, name: "五丈原", korean: "오장원", region: "익주(益州)", kingdom: "battle", desc: "오장원 전투(234). 제갈량 병사.", source: "KOEI+와룡전" },
+                        { lat: 33.20, lng: 107.90, name: "定军山", korean: "정군산", region: "익주(益州)", kingdom: "battle", desc: "정군산 전투. 황충이 하후연 참수.", source: "KOEI" },
+                        { lat: 31.43, lng: 104.17, name: "绵竹", korean: "면죽", region: "익주(益州)", kingdom: "shu", desc: "촉한 방어선. 제갈첨 전사.", source: "KOEI+와룡전" },
+                        { lat: 31.54, lng: 105.45, name: "梓潼", korean: "재동", region: "익주(益州)", kingdom: "shu", desc: "검각으로 가는 길목.", source: "KOEI+와룡전" },
+                        { lat: 30.80, lng: 106.08, name: "阆中", korean: "낭중", region: "익주(益州)", kingdom: "shu", desc: "장비가 지킨 곳. 피살지.", source: "KOEI+와룡전" },
+                        { lat: 29.56, lng: 106.55, name: "江州", korean: "강주", region: "익주(益州)", kingdom: "shu", desc: "현재 충칭. 장강 상류.", source: "KOEI+와룡전" },
+                        { lat: 30.82, lng: 108.40, name: "永安", korean: "영안", region: "익주(益州)", kingdom: "shu", desc: "백제성. 유비 최후의 땅.", source: "KOEI+와룡전" },
+                        { lat: 31.47, lng: 104.75, name: "涪城", korean: "부성", region: "익주(益州)", kingdom: "shu", desc: "유비와 유장이 회맹.", source: "KOEI+와룡전" },
+                        { lat: 30.77, lng: 104.63, name: "雒城", korean: "낙성", region: "익주(益州)", kingdom: "shu", desc: "방통이 전사한 곳.", source: "KOEI+와룡전" },
+                        { lat: 25.05, lng: 102.70, name: "建宁", korean: "건녕", region: "익주(益州)", kingdom: "shu", desc: "남만 접경. 제갈량 남정 거점.", source: "KOEI+와룡전" },
+                        { lat: 25.04, lng: 98.50, name: "永昌", korean: "영창", region: "익주(益州)", kingdom: "shu", desc: "촉한 최남단. 남만 경계.", source: "KOEI+와룡전" },
+                        { lat: 27.33, lng: 100.23, name: "云南", korean: "운남", region: "익주(益州)", kingdom: "shu", desc: "맹획의 근거지.", source: "KOEI+와룡전" },
+                        { lat: 32.43, lng: 105.83, name: "葭萌", korean: "가맹", region: "익주(益州)", kingdom: "shu", desc: "유비가 촉 진입 시 주둔.", source: "와룡전" },
+                        { lat: 31.13, lng: 104.40, name: "雒县", korean: "낙현", region: "익주(益州)", kingdom: "shu", desc: "낙성 전투 지역.", source: "와룡전" },
+                        { lat: 30.05, lng: 103.00, name: "邛都", korean: "공도", region: "익주(益州)", kingdom: "shu", desc: "익주 서남부.", source: "와룡전" },
+                        { lat: 29.58, lng: 103.77, name: "犍为", korean: "건위", region: "익주(益州)", kingdom: "shu", desc: "익주 남부.", source: "와룡전" },
+                        { lat: 28.88, lng: 104.63, name: "朱提", korean: "주제", region: "익주(益州)", kingdom: "shu", desc: "남중 지역.", source: "와룡전" },
+                        { lat: 26.88, lng: 100.22, name: "越嶲", korean: "월수", region: "익주(益州)", kingdom: "shu", desc: "남만 접경 지역.", source: "와룡전" },
+                        { lat: 23.38, lng: 103.38, name: "牂牁", korean: "장가", region: "익주(益州)", kingdom: "shu", desc: "익주 최남단.", source: "와룡전" },
+                        { lat: 31.88, lng: 106.77, name: "巴西", korean: "파서", region: "익주(益州)", kingdom: "shu", desc: "장비가 장합 물리친 곳.", source: "KOEI+와룡전" },
+                        { lat: 31.22, lng: 107.50, name: "巴中", korean: "파중", region: "익주(益州)", kingdom: "shu", desc: "파군 지역.", source: "와룡전" },
+                        { lat: 28.75, lng: 105.45, name: "南中", korean: "남중", region: "익주(益州)", kingdom: "shu", desc: "남만 정벌 지역.", source: "와룡전" },
+                        { lat: 32.70, lng: 107.50, name: "沔阳", korean: "면양", region: "익주(益州)", kingdom: "shu", desc: "한중 지역.", source: "와룡전" },
+                        { lat: 27.90, lng: 102.27, name: "越西", korean: "월서", region: "익주(益州)", kingdom: "shu", desc: "남만 접경.", source: "와룡전" },
+                        { lat: 32.06, lng: 118.80, name: "建业", korean: "건업", region: "양주(揚州)", kingdom: "wu", desc: "오나라 수도. 현재 난징.", source: "KOEI+와룡전" },
+                        { lat: 31.30, lng: 120.62, name: "吴郡", korean: "오군", region: "양주(揚州)", kingdom: "wu", desc: "손씨 가문 본거지. 현재 쑤저우.", source: "KOEI+와룡전" },
+                        { lat: 30.00, lng: 120.58, name: "会稽", korean: "회계", region: "양주(揚州)", kingdom: "wu", desc: "손책이 처음 기반을 잡은 곳.", source: "KOEI+와룡전" },
+                        { lat: 30.23, lng: 115.89, name: "柴桑", korean: "시상", region: "양주(揚州)", kingdom: "wu", desc: "적벽대전 당시 손권 본영.", source: "KOEI+와룡전" },
+                        { lat: 31.99, lng: 117.28, name: "合肥", korean: "합비", region: "양주(揚州)", kingdom: "battle", desc: "합비 전투. 장료가 손권 대파.", source: "KOEI+와룡전" },
+                        { lat: 30.95, lng: 117.32, name: "庐江", korean: "여강", region: "양주(揚州)", kingdom: "wu", desc: "주유, 노숙의 고향 인근.", source: "KOEI+와룡전" },
+                        { lat: 29.87, lng: 121.55, name: "余姚", korean: "여요", region: "양주(揚州)", kingdom: "wu", desc: "강동 동부 지역.", source: "KOEI" },
+                        { lat: 28.00, lng: 120.65, name: "临海", korean: "임해", region: "양주(揚州)", kingdom: "wu", desc: "강동 남부 해안.", source: "KOEI" },
+                        { lat: 28.68, lng: 115.90, name: "豫章", korean: "예장", region: "양주(揚州)", kingdom: "wu", desc: "현재 난창. 양주 내륙.", source: "KOEI+와룡전" },
+                        { lat: 31.98, lng: 118.52, name: "秣陵", korean: "말릉", region: "양주(揚州)", kingdom: "wu", desc: "건업의 옛 이름.", source: "와룡전" },
+                        { lat: 31.42, lng: 118.37, name: "丹阳", korean: "단양", region: "양주(揚州)", kingdom: "wu", desc: "오군 서쪽. 손책 활동지.", source: "와룡전" },
+                        { lat: 29.28, lng: 117.97, name: "鄱阳", korean: "파양", region: "양주(揚州)", kingdom: "wu", desc: "파양호 주변.", source: "와룡전" },
+                        { lat: 30.68, lng: 118.90, name: "宣城", korean: "선성", region: "양주(揚州)", kingdom: "wu", desc: "단양 남쪽.", source: "와룡전" },
+                        { lat: 29.00, lng: 119.63, name: "新都", korean: "신도", region: "양주(揚州)", kingdom: "wu", desc: "양주 남부.", source: "와룡전" },
+                        { lat: 28.45, lng: 119.92, name: "东阳", korean: "동양", region: "양주(揚州)", kingdom: "wu", desc: "회계 서쪽.", source: "와룡전" },
+                        { lat: 27.75, lng: 118.18, name: "建安", korean: "건안", region: "양주(揚州)", kingdom: "wu", desc: "복건 지역.", source: "와룡전" },
+                        { lat: 26.08, lng: 119.30, name: "侯官", korean: "후관", region: "양주(揚州)", kingdom: "wu", desc: "현재 복주.", source: "와룡전" },
+                        { lat: 31.33, lng: 117.23, name: "历阳", korean: "역양", region: "양주(揚州)", kingdom: "wu", desc: "여강 인근.", source: "와룡전" },
+                        { lat: 30.18, lng: 121.05, name: "山阴", korean: "산음", region: "양주(揚州)", kingdom: "wu", desc: "회계 인근.", source: "와룡전" },
+                        { lat: 30.52, lng: 114.32, name: "武昌", korean: "무창", region: "양주(揚州)", kingdom: "wu", desc: "손권이 잠시 천도한 곳.", source: "와룡전" },
+                        { lat: 23.13, lng: 113.27, name: "番禺", korean: "번우", region: "교주(交州)", kingdom: "wu", desc: "현재 광저우. 교주의 중심.", source: "KOEI+와룡전" },
+                        { lat: 22.82, lng: 108.32, name: "交趾", korean: "교지", region: "교주(交州)", kingdom: "wu", desc: "현재 베트남 북부.", source: "KOEI+와룡전" },
+                        { lat: 23.35, lng: 116.67, name: "揭阳", korean: "게양", region: "교주(交州)", kingdom: "wu", desc: "교주 동부 해안.", source: "KOEI" },
+                        { lat: 21.47, lng: 110.35, name: "合浦", korean: "합포", region: "교주(交州)", kingdom: "wu", desc: "남해 무역항.", source: "KOEI+와룡전" },
+                        { lat: 23.48, lng: 111.27, name: "苍梧", korean: "창오", region: "교주(交州)", kingdom: "wu", desc: "교주 북부.", source: "와룡전" },
+                        { lat: 22.63, lng: 109.42, name: "郁林", korean: "울림", region: "교주(交州)", kingdom: "wu", desc: "교주 중부.", source: "와룡전" },
+                        { lat: 25.28, lng: 110.28, name: "桂林", korean: "계림", region: "교주(交州)", kingdom: "wu", desc: "교주 북동부.", source: "와룡전" },
+                        { lat: 22.80, lng: 108.37, name: "龙编", korean: "용편", region: "교주(交州)", kingdom: "wu", desc: "교지 인근. 교주 치소.", source: "와룡전" },
+                        { lat: 24.80, lng: 113.58, name: "曲江", korean: "곡강", region: "교주(交州)", kingdom: "wu", desc: "남해 북부.", source: "와룡전" },
+                        { lat: 20.02, lng: 110.35, name: "朱崖", korean: "주애", region: "교주(交州)", kingdom: "wu", desc: "해남도. 최남단.", source: "와룡전" },
+                        { lat: 18.25, lng: 109.50, name: "儋耳", korean: "담이", region: "교주(交州)", kingdom: "wu", desc: "해남도 서부.", source: "와룡전" },
+                        { lat: 21.97, lng: 106.68, name: "日南", korean: "일남", region: "교주(交州)", kingdom: "wu", desc: "베트남 중부.", source: "와룡전" },
+                        { lat: 23.02, lng: 114.47, name: "南海", korean: "남해", region: "교주(交州)", kingdom: "wu", desc: "광동 지역.", source: "와룡전" },
+                        { lat: 22.27, lng: 113.55, name: "高要", korean: "고요", region: "교주(交州)", kingdom: "wu", desc: "창오 남쪽.", source: "와룡전" },
+                        // 초한지 도시/전투지
+                        { lat: 34.33, lng: 108.70, name: "咸阳", korean: "함양", region: "사예(司隸)", kingdom: "chohan", desc: "진(秦)나라 수도. 항우가 불태움. 아방궁 소재지.", source: "초한지" },
+                        { lat: 34.38, lng: 109.12, name: "鸿门", korean: "홍문", region: "사예(司隸)", kingdom: "chohan", desc: "홍문연(鴻門宴). 항우가 유방을 죽이려 한 연회.", source: "초한지" },
+                        { lat: 33.35, lng: 117.20, name: "垓下", korean: "해하", region: "예주(豫州)", kingdom: "chohan", desc: "해하대전. 사면초가(四面楚歌). 항우 최후의 전투.", source: "초한지" },
+                        { lat: 31.95, lng: 118.35, name: "乌江", korean: "오강", region: "양주(揚州)", kingdom: "chohan", desc: "항우 자결지. '강동의 자제 8천을 이끌고 왔으나...'", source: "초한지" },
+                        { lat: 34.78, lng: 113.38, name: "荥阳", korean: "형양", region: "예주(豫州)", kingdom: "chohan", desc: "초한쟁패 최대 격전지. 유방이 수차례 포위됨.", source: "초한지" },
+                        { lat: 34.75, lng: 113.00, name: "成皋", korean: "성고", region: "사예(司隸)", kingdom: "chohan", desc: "성고 전투. 전략적 요충지. 유방 탈출극.", source: "초한지" },
+                        { lat: 34.85, lng: 113.15, name: "广武", korean: "광무", region: "사예(司隸)", kingdom: "chohan", desc: "광무산 대치. 항우와 유방이 협곡 사이로 대화.", source: "초한지" },
+                        { lat: 38.10, lng: 114.15, name: "井陉", korean: "정형", region: "기주(冀州)", kingdom: "chohan", desc: "정형 전투. 한신의 배수진(背水陣) 대승.", source: "초한지" },
+                        { lat: 34.72, lng: 116.92, name: "沛县", korean: "패현", region: "서주(徐州)", kingdom: "chohan", desc: "유방의 고향. 한고조 탄생지.", source: "초한지" },
+                        { lat: 34.60, lng: 117.55, name: "下相", korean: "하상", region: "서주(徐州)", kingdom: "chohan", desc: "항우의 고향. 서초패왕 탄생지.", source: "초한지" },
+                        { lat: 35.38, lng: 116.75, name: "定陶", korean: "정도(초한)", region: "연주(兖州)", kingdom: "chohan", desc: "정도 전투. 항량(항우 숙부) 전사지.", source: "초한지" },
+                        { lat: 34.18, lng: 108.90, name: "灞上", korean: "패상", region: "사예(司隸)", kingdom: "chohan", desc: "유방이 함양 입성 전 주둔. 항우와의 긴장.", source: "초한지" },
+                        { lat: 33.45, lng: 107.00, name: "南郑", korean: "남정", region: "익주(益州)", kingdom: "chohan", desc: "한왕 유방의 봉지. 한중왕 책봉지.", source: "초한지" },
+                        { lat: 34.05, lng: 109.00, name: "栈道", korean: "잔도", region: "사예(司隸)", kingdom: "chohan", desc: "명수잔도 암도진창. 한신의 계략.", source: "초한지" },
+                        { lat: 34.55, lng: 113.67, name: "荥阳城", korean: "형양성", region: "예주(豫州)", kingdom: "chohan", desc: "기신(紀信)이 유방 대신 죽은 곳.", source: "초한지" },
+                        { lat: 32.05, lng: 118.75, name: "江东", korean: "강동", region: "양주(揚州)", kingdom: "chohan", desc: "항우 본거지. 강동 자제 8천 출신지.", source: "초한지" },
+                        { lat: 31.78, lng: 117.22, name: "九江", korean: "구강", region: "양주(揚州)", kingdom: "chohan", desc: "구강왕 영포(경포)의 영지.", source: "초한지" },
+                        { lat: 36.62, lng: 114.50, name: "邯郸道", korean: "한단도", region: "기주(冀州)", kingdom: "chohan", desc: "조나라 옛 수도. 장이·진여 활동지.", source: "초한지" },
+                        { lat: 35.00, lng: 116.50, name: "彭城战", korean: "팽성전", region: "서주(徐州)", kingdom: "chohan", desc: "팽성대전. 항우 3만으로 유방 56만 대파.", source: "초한지" },
+                        { lat: 33.75, lng: 116.25, name: "睢水", korean: "수수", region: "예주(豫州)", kingdom: "chohan", desc: "수수 전투. 유방군 대학살. 강물이 막힘.", source: "초한지" },
+                        // 전국시대 7웅 도시/전투지
+                        { lat: 34.45, lng: 108.75, name: "雍", korean: "옹", region: "옹주(雍州)", kingdom: "warring", desc: "진(秦) 초기 수도. 진목공의 근거지.", source: "전국시대" },
+
+                        { lat: 34.75, lng: 114.35, name: "大梁", korean: "대량", region: "예주(豫州)", kingdom: "warring", desc: "위(魏)나라 수도. 현재 개봉. 신릉군 활동지.", source: "전국시대" },
+                        { lat: 34.40, lng: 113.75, name: "新郑", korean: "신정", region: "예주(豫州)", kingdom: "warring", desc: "한(韓)나라 수도. 한비자 출신지.", source: "전국시대" },
+                        { lat: 35.02, lng: 110.85, name: "安邑", korean: "안읍", region: "병주(并州)", kingdom: "warring", desc: "위(魏) 초기 수도. 오기가 서하를 지킴.", source: "전국시대" },
+                        { lat: 35.80, lng: 112.85, name: "长平", korean: "장평", region: "병주(并州)", kingdom: "warring", desc: "장평대전. 백기가 조 40만 생매장.", source: "전국시대" },
+                        { lat: 35.32, lng: 115.45, name: "桂陵", korean: "계릉", region: "연주(兖州)", kingdom: "warring", desc: "계릉전투. 손빈의 '위위구조' 전략.", source: "전국시대" },
+                        { lat: 35.55, lng: 115.90, name: "马陵", korean: "마릉", region: "연주(兖州)", kingdom: "warring", desc: "마릉전투. 손빈이 방연을 사살.", source: "전국시대" },
+                        { lat: 34.45, lng: 111.65, name: "伊阙", korean: "이궐", region: "사예(司隸)", kingdom: "warring", desc: "이궐전투. 백기가 한·위 24만 격파.", source: "전국시대" },
+                        { lat: 39.45, lng: 116.20, name: "易水", korean: "역수", region: "유주(幽州)", kingdom: "warring", desc: "형가(荊軻) 출발지. '바람 쓸쓸하고 역수는 차가운데...'", source: "전국시대" },
+                        { lat: 36.80, lng: 118.05, name: "即墨", korean: "즉묵", region: "청주(青州)", kingdom: "warring", desc: "전단의 화우진(火牛陣). 제나라 부흥.", source: "전국시대" },
+                        { lat: 34.08, lng: 111.10, name: "宜阳", korean: "의양", region: "사예(司隸)", kingdom: "warring", desc: "의양 전투. 진이 한을 공격. 감무 활약.", source: "전국시대" },
+                        { lat: 29.37, lng: 113.10, name: "鄢郢", korean: "언영", region: "형주(荊州)", kingdom: "warring", desc: "백기의 수공. 초 수십만 익사.", source: "전국시대" },
+                        { lat: 34.80, lng: 113.55, name: "荥泽", korean: "형택", region: "예주(豫州)", kingdom: "warring", desc: "고대 대습지. 전략적 요충지.", source: "전국시대" },
+                        { lat: 37.85, lng: 114.70, name: "井陉口", korean: "정형구", region: "기주(冀州)", kingdom: "warring", desc: "태행산맥 관문. 군사 요충지.", source: "전국시대" },
+                        { lat: 41.95, lng: 121.27, name: "襄平燕", korean: "양평(연)", region: "유주(幽州)", kingdom: "warring", desc: "연(燕) 동부 거점. 요동 지역.", source: "전국시대" },
+                        { lat: 34.25, lng: 117.15, name: "彭城楚", korean: "팽성(초)", region: "서주(徐州)", kingdom: "warring", desc: "초(楚)의 주요 도시. 항우 본거지.", source: "전국시대" },
+                        { lat: 31.98, lng: 113.90, name: "邾", korean: "추", region: "형주(荊州)", kingdom: "warring", desc: "추나라. 초에 병합된 소국.", source: "전국시대" },
+                        { lat: 30.50, lng: 114.40, name: "寿郢", korean: "수영", region: "형주(荊州)", kingdom: "warring", desc: "초 말기 수도 이전지.", source: "전국시대" },
+                        { lat: 36.18, lng: 117.05, name: "阿", korean: "아", region: "청주(青州)", kingdom: "warring", desc: "아(阿)와 견(甄). 제나라 서부 요충.", source: "전국시대" },
+                        { lat: 35.55, lng: 113.85, name: "朝歌", korean: "조가", region: "예주(豫州)", kingdom: "warring", desc: "은(殷)나라 수도. 주왕(紂王) 최후.", source: "전국시대" },
+                        { lat: 35.40, lng: 111.18, name: "曲沃", korean: "곡옥", region: "병주(并州)", kingdom: "warring", desc: "진(晉) 분열 전 중심지.", source: "전국시대" },
+                        { lat: 34.92, lng: 112.45, name: "洛邑", korean: "낙읍", region: "사예(司隸)", kingdom: "warring", desc: "동주(東周) 수도. 천자의 도성.", source: "전국시대" },
+                        { lat: 34.85, lng: 108.10, name: "栎阳", korean: "역양", region: "옹주(雍州)", kingdom: "warring", desc: "진(秦) 중기 수도. 상앙 변법지.", source: "전국시대" },
+                        // 명산 (오악 + 주요 명산)
+                        { lat: 36.25, lng: 117.10, name: "泰山", korean: "태산", region: "청주(青州)", kingdom: "mountain", desc: "오악 중 동악(東岳). 봉선(封禪) 의식지. 천하제일산.", source: "명산" },
+                        { lat: 34.48, lng: 110.08, name: "华山", korean: "화산", region: "사예(司隸)", kingdom: "mountain", desc: "오악 중 서악(西岳). 천하제일험. 동관 인근.", source: "명산" },
+                        { lat: 34.48, lng: 112.95, name: "嵩山", korean: "숭산", region: "사예(司隸)", kingdom: "mountain", desc: "오악 중 중악(中岳). 소림사 소재지. 낙양 인근.", source: "명산" },
+                        { lat: 39.68, lng: 113.73, name: "恒山", korean: "항산(북)", region: "병주(并州)", kingdom: "mountain", desc: "오악 중 북악(北岳). 현공사 소재.", source: "명산" },
+                        { lat: 27.25, lng: 112.70, name: "衡山", korean: "형산(남)", region: "형주(荊州)", kingdom: "mountain", desc: "오악 중 남악(南岳). 장사 인근.", source: "명산" },
+                        { lat: 29.52, lng: 103.33, name: "峨眉山", korean: "아미산", region: "익주(益州)", kingdom: "mountain", desc: "중국 4대 불교 명산. 보현보살 도량.", source: "명산" },
+                        { lat: 30.90, lng: 103.57, name: "青城山", korean: "청성산", region: "익주(益州)", kingdom: "mountain", desc: "도교 발상지 중 하나. 성도 인근.", source: "명산" },
+                        { lat: 32.40, lng: 111.00, name: "武当山", korean: "무당산", region: "형주(荊州)", kingdom: "mountain", desc: "도교 성지. 무당파 발원지. 장삼풍.", source: "명산" },
+                        { lat: 30.13, lng: 118.17, name: "黄山", korean: "황산", region: "양주(揚州)", kingdom: "mountain", desc: "천하제일기산. 운해와 기암괴석.", source: "명산" },
+                        { lat: 29.58, lng: 116.00, name: "庐山", korean: "여산", region: "양주(揚州)", kingdom: "mountain", desc: "시상(柴桑) 인근. 도연명 은거지.", source: "명산" },
+                        { lat: 39.08, lng: 113.58, name: "五台山", korean: "오대산", region: "병주(并州)", kingdom: "mountain", desc: "중국 4대 불교 명산. 문수보살 도량.", source: "명산" },
+                        { lat: 33.95, lng: 108.95, name: "终南山", korean: "종남산", region: "사예(司隸)", kingdom: "mountain", desc: "장안 남쪽. 은자들의 산. 종남첩경.", source: "명산" },
+                        { lat: 30.08, lng: 121.02, name: "普陀山", korean: "보타산", region: "양주(揚州)", kingdom: "mountain", desc: "중국 4대 불교 명산. 관음보살 도량. 해상 명산.", source: "명산" },
+                        { lat: 30.48, lng: 117.80, name: "九华山", korean: "구화산", region: "양주(揚州)", kingdom: "mountain", desc: "중국 4대 불교 명산. 지장보살 도량.", source: "명산" },
+                        { lat: 31.17, lng: 121.40, name: "天台山", korean: "천태산", region: "양주(揚州)", kingdom: "mountain", desc: "천태종 발원지. 불교 성지.", source: "명산" },
+                        { lat: 27.10, lng: 117.95, name: "武夷山", korean: "무이산", region: "양주(揚州)", kingdom: "mountain", desc: "무이암차 산지. 주자(朱子) 강학지.", source: "명산" }
+                    ]
+                };
+        const data = (typeof MAP_DATA !== 'undefined') ? MAP_DATA : mapData;
+
+        // 레이어 그룹 정의
+        const layers = {
+            wei: L.layerGroup().addTo(map),
+            shu: L.layerGroup().addTo(map),
+            wu: L.layerGroup().addTo(map),
+            neutral: L.layerGroup().addTo(map),
+            pass: L.layerGroup().addTo(map),
+            battle: L.layerGroup().addTo(map),
+            chohan: L.layerGroup().addTo(map),
+            chunqiu: L.layerGroup().addTo(map),
+            warring: L.layerGroup().addTo(map),
+            mountain: L.layerGroup().addTo(map),
+            labels: L.layerGroup().addTo(map),
+            modernLabels: L.layerGroup(),
+            regions: L.layerGroup().addTo(map)
+        };
+
+        // 삼국지 세력 목록
+        const samgukKingdoms = ['wei', 'shu', 'wu', 'neutral', 'pass', 'battle'];
+
+        // 겹치는 마커 좌표 오프셋 처리
+        (function spreadOverlapping() {
+            const threshold = 0.03; // 이 거리 이내면 겹침으로 판단 (약 3km)
+            const offsetDist = 0.05; // 오프셋 거리
+            const assigned = new Set();
+            // 1단계: 클러스터 찾기
+            const clusters = [];
+            data.cities.forEach((city, i) => {
+                if (assigned.has(i)) return;
+                const cluster = [{ idx: i, city: city }];
+                data.cities.forEach((other, j) => {
+                    if (j <= i || assigned.has(j)) return;
+                    const dlat = Math.abs(city.lat - other.lat);
+                    const dlng = Math.abs(city.lng - other.lng);
+                    if (dlat < threshold && dlng < threshold) {
+                        cluster.push({ idx: j, city: other });
+                    }
+                });
+                if (cluster.length > 1) {
+                    clusters.push(cluster);
+                    cluster.forEach(c => assigned.add(c.idx));
+                }
+            });
+            // 2단계: 클러스터별 오프셋 적용
+            clusters.forEach(cluster => {
+                const centerLat = cluster.reduce((s, c) => s + c.city.lat, 0) / cluster.length;
+                const centerLng = cluster.reduce((s, c) => s + c.city.lng, 0) / cluster.length;
+                cluster.forEach((c, idx) => {
+                    const angle = (2 * Math.PI * idx) / cluster.length - Math.PI / 2;
+                    c.city.lat = centerLat + offsetDist * Math.sin(angle);
+                    c.city.lng = centerLng + offsetDist * Math.cos(angle);
+                });
+            });
+            if (clusters.length > 0) console.log('겹침 처리:', clusters.length + '개 클러스터,', assigned.size + '개 마커 오프셋');
+        })();
+
+        // 데이터 렌더링
+        (function() {
+            console.log('데이터 로드 완료:', data.cities.length + '개 도시');
+            // 주(州) 지역명 라벨
+            data.regions.forEach(region => {
+                const regionLabel = L.divIcon({
+                    className: 'region-label',
+                    html: `<div style="
+                        font-size: 22px;
+                        font-weight: bold;
+                        color: ${region.color};
+                        text-shadow: 2px 2px 4px #000, -2px -2px 4px #000, 2px -2px 4px #000, -2px 2px 4px #000;
+                        white-space: nowrap;
+                        opacity: 0.9;
+                    ">${region.korean}<br><span style="font-size:14px;">${region.name}</span></div>`,
+                    iconSize: [100, 50],
+                    iconAnchor: [50, 25]
+                });
+                L.marker([region.lat, region.lng], { icon: regionLabel, interactive: false }).addTo(layers.regions);
+            });
+
+            // 도시/관문/전투지 마커
+            data.cities.forEach(city => {
+                const color = colors[city.kingdom];
+                const isPass = city.kingdom === 'pass';
+
+                const dotIcon = L.divIcon({
+                    className: 'custom-marker',
+                    html: `<div class="${isPass ? 'marker-pass' : 'marker-dot'}" style="background-color: ${color}"></div>`,
+                    iconSize: isPass ? [26, 26] : [22, 22],
+                    iconAnchor: isPass ? [13, 13] : [11, 11]
+                });
+
+                const marker = L.marker([city.lat, city.lng], { icon: dotIcon });
+                const modernName = modernNames[city.korean];
+                const popupContent = `
+                    <h4>${city.korean} (${city.name})</h4>
+                    ${modernName ? '<div class="modern" style="color:#00e5ff;">현재: ' + modernName + '</div>' : ''}
+                    <div class="modern">州: ${city.region}</div>
+                    <div class="kingdom" style="color: ${color}">${kingdomNames[city.kingdom]}</div>
+                    <div class="desc">${city.desc}</div>
+                    ${city.figures ? '<div class="figures"><span>⚔️ 인물:</span> ' + city.figures + '</div>' : ''}
+                    ${city.battles ? '<div class="battles"><span>🔥 전투:</span> ' + city.battles + '</div>' : ''}
+                    <div class="game-source">출처: ${city.source}</div>
+                `;
+                marker.bindPopup(popupContent);
+                marker.on('mouseover', function() { this.openPopup(); });
+
+                // 해당 레이어에 추가
+                if (layers[city.kingdom]) {
+                    marker.addTo(layers[city.kingdom]);
+                }
+
+                // 라벨
+                const labelIcon = L.divIcon({
+                    className: 'city-label',
+                    html: city.korean,
+                    iconSize: [60, 16],
+                    iconAnchor: [-8, 8]
+                });
+                const labelMarker = L.marker([city.lat, city.lng], { icon: labelIcon, interactive: false });
+                labelMarker.kingdom = city.kingdom;
+                labelMarker.addTo(layers.labels);
+
+                // 현재 도시명 라벨
+                if (modernNames[city.korean]) {
+                    const modernIcon = L.divIcon({
+                        className: 'modern-label',
+                        html: '(' + modernNames[city.korean] + ')',
+                        iconSize: [100, 14],
+                        iconAnchor: [-8, -6]
+                    });
+                    const modernMarker = L.marker([city.lat, city.lng], { icon: modernIcon, interactive: false });
+                    modernMarker.kingdom = city.kingdom;
+                    modernMarker.addTo(layers.modernLabels);
+                }
+            });
+
+            // 도시 개수 표시
+            document.getElementById('city-count').textContent = `총: ${data.cities.length}개`;
+        })();
+
+        // 필터 기능
+        function updateFilters() {
+            const samgukChecked = document.getElementById('filter-samguk').checked;
+            const chohanChecked = document.getElementById('filter-chohan').checked;
+            const warringChecked = document.getElementById('filter-warring').checked;
+
+            const weiChecked = document.getElementById('filter-wei').checked;
+            const shuChecked = document.getElementById('filter-shu').checked;
+            const wuChecked = document.getElementById('filter-wu').checked;
+            const neutralChecked = document.getElementById('filter-neutral').checked;
+            const passChecked = document.getElementById('filter-pass').checked;
+            const battleChecked = document.getElementById('filter-battle').checked;
+            const labelsChecked = document.getElementById('filter-labels').checked;
+
+            // 삼국지 세력
+            if (samgukChecked && weiChecked) map.addLayer(layers.wei); else map.removeLayer(layers.wei);
+            if (samgukChecked && shuChecked) map.addLayer(layers.shu); else map.removeLayer(layers.shu);
+            if (samgukChecked && wuChecked) map.addLayer(layers.wu); else map.removeLayer(layers.wu);
+            if (samgukChecked && neutralChecked) map.addLayer(layers.neutral); else map.removeLayer(layers.neutral);
+            if (samgukChecked && passChecked) map.addLayer(layers.pass); else map.removeLayer(layers.pass);
+            if (samgukChecked && battleChecked) map.addLayer(layers.battle); else map.removeLayer(layers.battle);
+
+            // 초한지
+            if (chohanChecked) map.addLayer(layers.chohan); else map.removeLayer(layers.chohan);
+
+            // 춘추시대
+            const chunqiuChecked = document.getElementById('filter-chunqiu').checked;
+            if (chunqiuChecked) map.addLayer(layers.chunqiu); else map.removeLayer(layers.chunqiu);
+
+            // 전국시대
+            if (warringChecked) map.addLayer(layers.warring); else map.removeLayer(layers.warring);
+
+            // 명산
+            const mountainChecked = document.getElementById('filter-mountain').checked;
+            if (mountainChecked) map.addLayer(layers.mountain); else map.removeLayer(layers.mountain);
+
+            // 라벨
+            if (labelsChecked) map.addLayer(layers.labels); else map.removeLayer(layers.labels);
+
+            // 현재명
+            const modernChecked = document.getElementById('filter-modern').checked;
+            if (modernChecked) map.addLayer(layers.modernLabels); else map.removeLayer(layers.modernLabels);
+        }
+
+        // 전체 선택/해제
+        function showAll() {
+            document.querySelectorAll('.filter-panel input[type="checkbox"]').forEach(cb => cb.checked = true);
+            updateFilters();
+        }
+
+        function hideAll() {
+            document.querySelectorAll('.filter-panel input[type="checkbox"]').forEach(cb => cb.checked = false);
+            updateFilters();
+        }
+
+        // 체크박스 이벤트 리스너
+        document.querySelectorAll('.filter-panel input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener('change', updateFilters);
+        });
+
+        // 지도 범위
+        map.setMaxBounds([[10, 70], [55, 140]]);
+
+        // ===== 검색 기능 =====
+        const searchInput = document.getElementById('search-input');
+        const searchResults = document.getElementById('search-results');
+        const allMarkers = {};
+        // 마커 인덱스 구축 (렌더링 후 레이어에서 수집)
+        Object.keys(layers).forEach(key => {
+            if (key === 'labels' || key === 'modernLabels' || key === 'regions') return;
+            layers[key].eachLayer(marker => {
+                if (marker.getPopup) {
+                    const popup = marker.getPopup();
+                    if (popup) allMarkers[marker._leaflet_id] = marker;
+                }
+            });
+        });
+
+        searchInput.addEventListener('input', function() {
+            const query = this.value.trim().toLowerCase();
+            searchResults.innerHTML = '';
+            if (query.length === 0) {
+                searchResults.classList.remove('active');
+                return;
+            }
+            const matches = data.cities.filter(city =>
+                city.korean.toLowerCase().includes(query) ||
+                city.name.toLowerCase().includes(query) ||
+                (city.figures && city.figures.toLowerCase().includes(query)) ||
+                (city.desc && city.desc.toLowerCase().includes(query))
+            ).slice(0, 15);
+
+            if (matches.length === 0) {
+                searchResults.innerHTML = '<div class="search-result-item" style="color:#888;">검색 결과 없음</div>';
+                searchResults.classList.add('active');
+                return;
+            }
+
+            matches.forEach(city => {
+                const color = colors[city.kingdom] || '#888';
+                const typeName = kingdomNames[city.kingdom] || '';
+                const item = document.createElement('div');
+                item.className = 'search-result-item';
+                item.innerHTML = `
+                    <div>
+                        <span class="sr-name">${city.korean}</span>
+                        <span style="color:#aaa;font-size:11px;"> ${city.name}</span>
+                        <div class="sr-region">${city.region}</div>
+                    </div>
+                    <span class="sr-type" style="background:${color};color:#fff;">${typeName}</span>
+                `;
+                item.addEventListener('click', () => {
+                    map.setView([city.lat, city.lng], 9, { animate: true });
+                    // 해당 마커의 팝업 열기
+                    Object.values(allMarkers).forEach(m => {
+                        const ll = m.getLatLng();
+                        if (Math.abs(ll.lat - city.lat) < 0.001 && Math.abs(ll.lng - city.lng) < 0.001) {
+                            m.openPopup();
+                        }
+                    });
+                    searchResults.classList.remove('active');
+                    searchInput.value = city.korean;
+                });
+                searchResults.appendChild(item);
+            });
+            searchResults.classList.add('active');
+        });
+
+        // 검색창 외부 클릭시 결과 닫기
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.search-panel')) {
+                searchResults.classList.remove('active');
+            }
+        });
+
+        // Enter 키로 첫 번째 결과 선택
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                const first = searchResults.querySelector('.search-result-item');
+                if (first) first.click();
+            }
+            if (e.key === 'Escape') {
+                searchResults.classList.remove('active');
+                searchInput.blur();
+            }
+        });
+    </script>
+</body>
+</html>
