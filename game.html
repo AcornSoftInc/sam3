@@ -303,6 +303,32 @@
         }
         .victory-box button:hover { transform: scale(1.05); }
 
+        /* ===== Officer System ===== */
+        .officer-section { margin-top: 12px; margin-bottom: 8px; }
+        .officer-header { color: #ffd700; font-size: 12px; margin-bottom: 6px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+        .no-officer { color: #666; font-size: 11px; text-align: center; padding: 6px 0; }
+        .officer-card {
+            background: rgba(255,255,255,0.03); border: 1px solid #333; border-radius: 5px;
+            padding: 6px 8px; margin-bottom: 4px; transition: border-color 0.2s;
+        }
+        .officer-card:hover { border-color: #555; }
+        .officer-name { font-size: 12px; font-weight: bold; color: #e0e0e0; }
+        .officer-chinese { font-size: 10px; color: #888; font-weight: normal; }
+        .officer-stats {
+            display: flex; gap: 6px; margin-top: 3px; font-size: 10px;
+        }
+        .os-war { color: #ff8a80; }
+        .os-int { color: #82b1ff; }
+        .os-pol { color: #b9f6ca; }
+        .os-cha { color: #ffe082; }
+        .officer-move { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
+        .officer-move-btn {
+            background: rgba(255,215,0,0.08); border: 1px solid #555; color: #ccc;
+            padding: 2px 6px; border-radius: 3px; cursor: pointer; font-size: 9px;
+            font-family: inherit; transition: all 0.2s;
+        }
+        .officer-move-btn:hover { background: rgba(255,215,0,0.2); border-color: #ffd700; color: #ffd700; }
+
         /* Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #1a1a2e; }
@@ -525,6 +551,54 @@ const SCENARIO_190 = {
 };
 
 // ============================================================
+// OFFICERS (장수) DATA
+// ============================================================
+
+const OFFICERS = [
+    // 동탁
+    { id: "yeobo", name: "여포", chinese: "吕布", faction: "dongtak", cityId: "nakyang", war: 99, int: 25, pol: 10, cha: 15 },
+    { id: "igak", name: "이각", chinese: "李傕", faction: "dongtak", cityId: "jangan", war: 72, int: 40, pol: 20, cha: 15 },
+    { id: "gwaksa", name: "곽사", chinese: "郭汜", faction: "dongtak", cityId: "jangan", war: 70, int: 35, pol: 15, cha: 12 },
+    { id: "hwaung", name: "화웅", chinese: "华雄", faction: "dongtak", cityId: "nakyang", war: 85, int: 30, pol: 12, cha: 20 },
+    // 조조
+    { id: "hahudon", name: "하후돈", chinese: "夏侯惇", faction: "jojo", cityId: "jinryu", war: 88, int: 50, pol: 35, cha: 70 },
+    { id: "hahuyeon", name: "하후연", chinese: "夏侯渊", faction: "jojo", cityId: "jinryu", war: 86, int: 55, pol: 30, cha: 55 },
+    { id: "join", name: "조인", chinese: "曹仁", faction: "jojo", cityId: "jinryu", war: 82, int: 60, pol: 45, cha: 60 },
+    { id: "sunuk", name: "순욱", chinese: "荀彧", faction: "jojo", cityId: "jinryu", war: 25, int: 97, pol: 92, cha: 85 },
+    // 유비
+    { id: "gwanu", name: "관우", chinese: "关羽", faction: "yubi", cityId: "pyeongwon", war: 97, int: 75, pol: 60, cha: 90 },
+    { id: "jangbi", name: "장비", chinese: "张飞", faction: "yubi", cityId: "pyeongwon", war: 98, int: 30, pol: 20, cha: 50 },
+    { id: "ganong", name: "간옹", chinese: "简雍", faction: "yubi", cityId: "pyeongwon", war: 20, int: 65, pol: 78, cha: 82 },
+    // 손견
+    { id: "sonchaek", name: "손책", chinese: "孙策", faction: "songyeon", cityId: "jangsa", war: 92, int: 65, pol: 50, cha: 88 },
+    { id: "juyu", name: "주유", chinese: "周瑜", faction: "songyeon", cityId: "jangsa", war: 70, int: 96, pol: 80, cha: 90 },
+    { id: "hwanggae", name: "황개", chinese: "黄盖", faction: "songyeon", cityId: "jangsa", war: 78, int: 55, pol: 40, cha: 60 },
+    { id: "jeongbo", name: "정보", chinese: "程普", faction: "songyeon", cityId: "jangsa", war: 80, int: 60, pol: 50, cha: 65 },
+    // 원소
+    { id: "allyang", name: "안량", chinese: "颜良", faction: "wonso", cityId: "nampi", war: 93, int: 30, pol: 15, cha: 35 },
+    { id: "munchu", name: "문추", chinese: "文丑", faction: "wonso", cityId: "nampi", war: 90, int: 28, pol: 12, cha: 30 },
+    { id: "jeonpung", name: "전풍", chinese: "田丰", faction: "wonso", cityId: "nampi", war: 20, int: 92, pol: 88, cha: 70 },
+    { id: "simbae", name: "심배", chinese: "审配", faction: "wonso", cityId: "nampi", war: 40, int: 78, pol: 72, cha: 55 },
+    // 유표
+    { id: "gweryang", name: "괴량", chinese: "蒯良", faction: "yupyo", cityId: "yangyang", war: 25, int: 82, pol: 85, cha: 70 },
+    { id: "chaemo", name: "채모", chinese: "蔡瑁", faction: "yupyo", cityId: "yangyang", war: 60, int: 50, pol: 55, cha: 40 },
+    { id: "hwangjo", name: "황조", chinese: "黄祖", faction: "yupyo", cityId: "gangha", war: 55, int: 40, pol: 35, cha: 30 },
+    // 유장
+    { id: "jangim", name: "장임", chinese: "张任", faction: "yujang", cityId: "seongdo", war: 82, int: 55, pol: 40, cha: 45 },
+    { id: "eoman", name: "엄안", chinese: "严颜", faction: "yujang", cityId: "gangju", war: 78, int: 50, pol: 45, cha: 55 },
+    { id: "beopjeong", name: "법정", chinese: "法正", faction: "yujang", cityId: "seongdo", war: 20, int: 90, pol: 85, cha: 65 },
+    // 마등
+    { id: "macho", name: "마초", chinese: "马超", faction: "madeung", cityId: "muwi", war: 95, int: 35, pol: 20, cha: 75 },
+    { id: "bangdeok", name: "방덕", chinese: "庞德", faction: "madeung", cityId: "cheonsu", war: 88, int: 30, pol: 15, cha: 50 },
+    // 공손찬
+    { id: "joun", name: "조운", chinese: "赵云", faction: "gongsonchan", cityId: "bukpyeong", war: 96, int: 70, pol: 60, cha: 85 },
+    { id: "jeonye", name: "전예", chinese: "田豫", faction: "gongsonchan", cityId: "gye", war: 55, int: 78, pol: 75, cha: 65 },
+    // 원술
+    { id: "giryeong", name: "기령", chinese: "纪灵", faction: "wonsul", cityId: "suchun", war: 72, int: 30, pol: 20, cha: 25 },
+    { id: "yangdaejang", name: "양대장", chinese: "杨大将", faction: "wonsul", cityId: "yeonam", war: 65, int: 25, pol: 15, cha: 20 },
+];
+
+// ============================================================
 // ADJACENCY GRAPH (bidirectional)
 // ============================================================
 
@@ -701,6 +775,9 @@ function initGameState() {
         }
     }
 
+    // Initialize officers
+    const officers = OFFICERS.map(o => ({ ...o }));
+
     gameState = {
         year: sc.year,
         month: sc.month,
@@ -709,6 +786,7 @@ function initGameState() {
         cities: cities,
         factions: factions,
         eliminated: [],
+        officers: officers,
     };
 }
 
@@ -856,6 +934,7 @@ function updateCityPanel() {
             ${barRow('충성', city.loyalty, '#e91e63')}
         </div>
 
+        ${officersHTML(city, isPlayerCity)}
         ${isPlayerCity ? actionsHTML(city) : '<div style="color:#888;text-align:center;margin-top:20px;font-size:12px;">자신의 도시만 관리할 수 있습니다</div>'}
     `;
 }
@@ -878,6 +957,69 @@ function barRow(label, value, color) {
             <div class="stat-bar-bg"><div class="stat-bar" style="width:${value}%;background:${color};"></div></div>
         </span>
     </div>`;
+}
+
+function officersHTML(city, isPlayerCity) {
+    const officers = getOfficersAt(city.id);
+    if (officers.length === 0) {
+        return `<div class="officer-section"><h4 class="officer-header">장수</h4><div class="no-officer">배치된 장수 없음</div></div>`;
+    }
+
+    // For player cities, get adjacent own cities for movement
+    let adjOwnCities = [];
+    if (isPlayerCity) {
+        adjOwnCities = (ADJACENCY[city.id] || [])
+            .map(id => gameState.cities[id])
+            .filter(c => c && c.owner === gameState.playerFaction);
+    }
+
+    let html = `<div class="officer-section"><h4 class="officer-header">장수 (${officers.length}명)</h4>`;
+    for (const o of officers) {
+        html += `<div class="officer-card">
+            <div class="officer-name">${o.name} <span class="officer-chinese">${o.chinese}</span></div>
+            <div class="officer-stats">
+                <span class="os-war" title="무력">무 ${o.war}</span>
+                <span class="os-int" title="지력">지 ${o.int}</span>
+                <span class="os-pol" title="정치">정 ${o.pol}</span>
+                <span class="os-cha" title="매력">매 ${o.cha}</span>
+            </div>`;
+        if (isPlayerCity && adjOwnCities.length > 0) {
+            html += `<div class="officer-move">`;
+            for (const ac of adjOwnCities) {
+                html += `<button class="officer-move-btn" onclick="moveOfficer('${o.id}','${ac.id}')" title="${ac.korean}(으)로 이동">${ac.korean}</button>`;
+            }
+            html += `</div>`;
+        }
+        html += `</div>`;
+    }
+    html += `</div>`;
+    return html;
+}
+
+function moveOfficer(officerId, targetCityId) {
+    if (!gameState || !gameState.officers) return;
+    const officer = gameState.officers.find(o => o.id === officerId);
+    if (!officer) return;
+
+    const srcCity = gameState.cities[officer.cityId];
+    const dstCity = gameState.cities[targetCityId];
+    if (!srcCity || !dstCity) return;
+    if (srcCity.owner !== gameState.playerFaction || dstCity.owner !== gameState.playerFaction) return;
+
+    // Check adjacency
+    if (!(ADJACENCY[srcCity.id] || []).includes(targetCityId)) return;
+
+    // Check if source city has actions left
+    if (srcCity.actionsLeft <= 0) {
+        addLog(srcCity.korean, `행동력이 부족하여 장수를 이동할 수 없습니다.`, 'bad');
+        return;
+    }
+
+    srcCity.actionsLeft--;
+    officer.cityId = targetCityId;
+    addLog(srcCity.korean, `${officer.name}(을)를 ${dstCity.korean}(으)로 이동`, 'info');
+    updateCityPanel();
+    updateTopBar();
 }
 
 function actionsHTML(city) {
@@ -949,36 +1091,42 @@ function doAction(cityId, action) {
     const city = gameState.cities[cityId];
     if (!city || city.owner !== gameState.playerFaction || city.actionsLeft <= 0) return;
 
+    const polBonus = devBonus(cityId);
+    const chaBonus = recruitBonus(cityId);
+
     switch(action) {
         case 'develop':
             if (city.gold < 300 || city.development >= 100) return;
             city.gold -= 300;
-            city.development = Math.min(100, city.development + 5);
+            const devInc = 5 + polBonus;
+            city.development = Math.min(100, city.development + devInc);
             city.actionsLeft--;
-            addLog(city.korean, `개발 실시 (개발 ${city.development - 5} → ${city.development})`, 'good');
+            addLog(city.korean, `개발 실시 (개발 +${devInc}${polBonus > 0 ? ' 장수보너스+' + polBonus : ''} → ${city.development})`, 'good');
             break;
         case 'commerce':
             if (city.gold < 300 || city.commerce >= 100) return;
             city.gold -= 300;
-            city.commerce = Math.min(100, city.commerce + 5);
+            const comInc = 5 + polBonus;
+            city.commerce = Math.min(100, city.commerce + comInc);
             city.actionsLeft--;
-            addLog(city.korean, `상업 투자 (상업 ${city.commerce - 5} → ${city.commerce})`, 'good');
+            addLog(city.korean, `상업 투자 (상업 +${comInc}${polBonus > 0 ? ' 장수보너스+' + polBonus : ''} → ${city.commerce})`, 'good');
             break;
         case 'defense':
             if (city.gold < 500 || city.defense >= 100) return;
             city.gold -= 500;
             city.defense = Math.min(100, city.defense + 5);
             city.actionsLeft--;
-            addLog(city.korean, `방비 강화 (방어 ${city.defense - 5} → ${city.defense})`, 'good');
+            addLog(city.korean, `방비 강화 (방어 → ${city.defense})`, 'good');
             break;
         case 'recruit':
             if (city.gold < 200 || city.food < 30000 || city.population < 3000) return;
             city.gold -= 200;
             city.food -= 30000;
-            city.troops += 1000;
+            const totalRecruit = 1000 + chaBonus;
+            city.troops += totalRecruit;
             city.population -= 1000;
             city.actionsLeft--;
-            addLog(city.korean, `징병 실시 (병력 +1000, 현재 ${formatNum(city.troops)})`, 'good');
+            addLog(city.korean, `징병 실시 (병력 +${formatNum(totalRecruit)}${chaBonus > 0 ? ' 장수보너스+' + chaBonus : ''}, 현재 ${formatNum(city.troops)})`, 'good');
             break;
     }
 
@@ -1116,6 +1264,44 @@ function processAITurns() {
     }
 }
 
+// AI Officer Management
+function processAIOfficerMoves() {
+    if (!gameState || !gameState.officers) return;
+    for (const [fid, faction] of Object.entries(FACTIONS)) {
+        if (fid === gameState.playerFaction) continue;
+        if (gameState.eliminated.includes(fid)) continue;
+
+        const myCities = Object.values(gameState.cities).filter(c => c.owner === fid);
+        if (myCities.length <= 1) continue;
+
+        // Find frontline cities (adjacent to enemy)
+        const frontline = myCities.filter(c => {
+            const adj = ADJACENCY[c.id] || [];
+            return adj.some(id => {
+                const ac = gameState.cities[id];
+                return ac && ac.owner && ac.owner !== fid;
+            });
+        });
+        if (frontline.length === 0) continue;
+
+        // Move high-war officers to frontline
+        const myOfficers = getOfficersOfFaction(fid);
+        for (const off of myOfficers) {
+            if (off.war < 70) continue; // only move strong warriors
+            const currentCity = gameState.cities[off.cityId];
+            if (!currentCity || currentCity.owner !== fid) continue;
+            // Already on frontline?
+            if (frontline.some(f => f.id === off.cityId)) continue;
+            // Try to move to adjacent frontline city
+            const adjIds = ADJACENCY[off.cityId] || [];
+            const adjFrontline = frontline.filter(f => adjIds.includes(f.id));
+            if (adjFrontline.length > 0) {
+                off.cityId = adjFrontline[0].id;
+            }
+        }
+    }
+}
+
 // ============================================================
 // TURN SYSTEM
 // ============================================================
@@ -1133,6 +1319,9 @@ function endTurn() {
     setTimeout(() => {
         // 1. AI internal actions (develop, recruit, etc.)
         processAITurns();
+
+        // 1.5 AI officer management
+        processAIOfficerMoves();
 
         // 2. AI combat
         processAICombat();
@@ -1296,6 +1485,50 @@ function formatTroops(n) {
 }
 
 // ============================================================
+// OFFICER SYSTEM
+// ============================================================
+
+function getOfficersAt(cityId) {
+    if (!gameState || !gameState.officers) return [];
+    return gameState.officers.filter(o => o.cityId === cityId);
+}
+
+function getOfficersOfFaction(factionId) {
+    if (!gameState || !gameState.officers) return [];
+    return gameState.officers.filter(o => o.faction === factionId);
+}
+
+function getTopOfficer(cityId, stat) {
+    const officers = getOfficersAt(cityId);
+    if (officers.length === 0) return null;
+    return officers.reduce((best, o) => (o[stat] > best[stat]) ? o : best, officers[0]);
+}
+
+function combatBonus(cityId) {
+    const top = getTopOfficer(cityId, 'war');
+    if (!top) return 0;
+    return top.war / 100 * 0.5; // 0 ~ 0.5 multiplier bonus
+}
+
+function devBonus(cityId) {
+    const top = getTopOfficer(cityId, 'pol');
+    if (!top) return 0;
+    return Math.floor(top.pol / 35); // +1 ~ +2 (pol 35~70 → +1, 70~100 → +2)
+}
+
+function recruitBonus(cityId) {
+    const top = getTopOfficer(cityId, 'cha');
+    if (!top) return 0;
+    return Math.floor(top.cha / 100 * 500); // up to +500
+}
+
+function defenseBonus(cityId) {
+    const top = getTopOfficer(cityId, 'int');
+    if (!top) return 0;
+    return Math.floor(top.int / 10); // +0 ~ +10 defense bonus
+}
+
+// ============================================================
 // COMBAT ENGINE
 // ============================================================
 
@@ -1303,15 +1536,18 @@ function getAdjacentCities(cityId) {
     return (ADJACENCY[cityId] || []).map(id => gameState.cities[id]).filter(Boolean);
 }
 
-function resolveBattle(attackTroops, defCity) {
+function resolveBattle(attackTroops, defCity, srcCityId, dstCityId) {
     // Empty city → bloodless capture
     if (!defCity.owner || defCity.troops <= 0) {
         return { victory: true, attLoss: 0, defLoss: 0, attRemain: attackTroops, defRemain: 0 };
     }
 
     const rand = () => 0.8 + Math.random() * 0.4; // 0.8 ~ 1.2
-    const attackPower = attackTroops * rand();
-    const defensePower = defCity.troops * (defCity.defense / 100) * rand();
+    const attOfficerBonus = srcCityId ? combatBonus(srcCityId) : 0;
+    const defOfficerBonus = dstCityId ? combatBonus(dstCityId) : 0;
+    const defIntBonus = dstCityId ? defenseBonus(dstCityId) : 0;
+    const attackPower = attackTroops * (1 + attOfficerBonus) * rand();
+    const defensePower = defCity.troops * ((defCity.defense + defIntBonus) / 100) * (1 + defOfficerBonus) * rand();
 
     const victory = attackPower > defensePower;
 
@@ -1339,7 +1575,7 @@ function resolveBattle(attackTroops, defCity) {
     }
 }
 
-function applyBattleResult(srcCity, dstCity, attackTroops, result, attackerFaction) {
+function applyBattleResult(srcCity, dstCity, attackTroops, result, attackerFaction, srcCityId) {
     // Deduct attacking troops from source
     srcCity.troops -= attackTroops;
     if (srcCity.troops < 0) srcCity.troops = 0;
@@ -1349,19 +1585,41 @@ function applyBattleResult(srcCity, dstCity, attackTroops, result, attackerFacti
         dstCity.owner = attackerFaction;
         dstCity.troops = result.attRemain;
         dstCity.loyalty = Math.max(20, dstCity.loyalty - 20);
+        // Move one officer from source to conquered city (highest war)
+        if (srcCityId) {
+            const srcOfficers = getOfficersAt(srcCityId).filter(o => o.faction === attackerFaction);
+            if (srcOfficers.length > 1) {
+                const topWar = srcOfficers.reduce((a, b) => a.war > b.war ? a : b);
+                topWar.cityId = dstCity.id;
+            }
+        }
         // Check if old owner eliminated
-        if (oldOwner) checkElimination(oldOwner);
+        if (oldOwner) checkElimination(oldOwner, attackerFaction);
     } else {
         dstCity.troops = result.defRemain;
     }
 }
 
-function checkElimination(factionId) {
+function checkElimination(factionId, conquerorId) {
     if (gameState.eliminated.includes(factionId)) return;
     const hasCities = Object.values(gameState.cities).some(c => c.owner === factionId);
     if (!hasCities) {
         gameState.eliminated.push(factionId);
         addLog('시스템', `${FACTIONS[factionId].name} 세력이 멸망했습니다!`, 'bad');
+        // Capture officers
+        if (conquerorId && gameState.officers) {
+            const lostOfficers = gameState.officers.filter(o => o.faction === factionId);
+            const conquerorCities = Object.values(gameState.cities).filter(c => c.owner === conquerorId);
+            if (conquerorCities.length > 0) {
+                for (const off of lostOfficers) {
+                    if (Math.random() < 0.6) { // 60% chance to join conqueror
+                        off.faction = conquerorId;
+                        off.cityId = conquerorCities[0].id;
+                        addLog('장수', `${off.name}(이)가 ${FACTIONS[conquerorId].name}에 합류했습니다!`, 'good');
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -1508,10 +1766,10 @@ function executeAttack(srcCityId, dstCityId) {
 
     // Resolve battle IMMEDIATELY (not inside animation callback)
     const isBloodless = !dst.owner || dst.troops <= 0;
-    const result = resolveBattle(attackTroops, dst);
+    const result = resolveBattle(attackTroops, dst, srcCityId, dstCityId);
     const dstOwnerName = dst.owner ? FACTIONS[dst.owner].name : '공백지';
 
-    applyBattleResult(src, dst, attackTroops, result, gameState.playerFaction);
+    applyBattleResult(src, dst, attackTroops, result, gameState.playerFaction, srcCityId);
 
     // Play animation (purely visual, non-blocking)
     try { showBattleAnimation(src, dst); } catch(e) {}
@@ -1620,10 +1878,10 @@ function processAICombat() {
             const sendTroops = Math.min(maxSend, Math.max(3000, Math.floor(city.troops * 0.6)));
 
             const isBloodless = !target.owner || target.troops <= 0;
-            const result = resolveBattle(sendTroops, target);
+            const result = resolveBattle(sendTroops, target, city.id, target.id);
             const targetOwnerName = target.owner ? FACTIONS[target.owner]?.name || '공백지' : '공백지';
 
-            applyBattleResult(city, target, sendTroops, result, fid);
+            applyBattleResult(city, target, sendTroops, result, fid, city.id);
 
             if (isBloodless) {
                 addLog('전투', `${faction.name}: ${city.korean} → ${target.korean} 무혈 점령`, 'info');
