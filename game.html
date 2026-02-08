@@ -515,12 +515,12 @@ const SCENARIO_190 = {
     },
     // 기본 도시 스탯 오버라이드 (수도급 도시)
     cityStats: {
-        nakyang: { population: 350000, gold: 20000, food: 30000, troops: 20000, development: 80, commerce: 75, defense: 70, loyalty: 40 },
-        jangan: { population: 300000, gold: 18000, food: 25000, troops: 15000, development: 75, commerce: 70, defense: 65, loyalty: 45 },
-        seongdo: { population: 280000, gold: 18000, food: 35000, troops: 12000, development: 70, commerce: 65, defense: 60, loyalty: 70 },
-        yangyang: { population: 200000, gold: 14000, food: 25000, troops: 10000, development: 65, commerce: 60, defense: 55, loyalty: 65 },
-        geonup: { population: 220000, gold: 14000, food: 22000, troops: 5000, development: 60, commerce: 65, defense: 50, loyalty: 50 },
-        eop: { population: 180000, gold: 10000, food: 18000, troops: 3000, development: 55, commerce: 50, defense: 50, loyalty: 50 },
+        nakyang: { population: 350000, gold: 20000, food: 3000000, troops: 20000, development: 80, commerce: 75, defense: 70, loyalty: 40 },
+        jangan: { population: 300000, gold: 18000, food: 2500000, troops: 15000, development: 75, commerce: 70, defense: 65, loyalty: 45 },
+        seongdo: { population: 280000, gold: 18000, food: 3500000, troops: 12000, development: 70, commerce: 65, defense: 60, loyalty: 70 },
+        yangyang: { population: 200000, gold: 14000, food: 2500000, troops: 10000, development: 65, commerce: 60, defense: 55, loyalty: 65 },
+        geonup: { population: 220000, gold: 14000, food: 2200000, troops: 5000, development: 60, commerce: 65, defense: 50, loyalty: 50 },
+        eop: { population: 180000, gold: 10000, food: 1800000, troops: 3000, development: 55, commerce: 50, defense: 50, loyalty: 50 },
     },
 };
 
@@ -677,7 +677,7 @@ function initGameState() {
             owner: owner,
             population: override.population || (owner ? 80000 + Math.floor(Math.random() * 60000) : 50000 + Math.floor(Math.random() * 30000)),
             gold: override.gold || (owner ? 8000 + Math.floor(Math.random() * 6000) : 3000),
-            food: override.food || (owner ? 15000 + Math.floor(Math.random() * 10000) : 5000),
+            food: override.food || (owner ? 1500000 + Math.floor(Math.random() * 1000000) : 500000),
             troops: override.troops || (owner ? 5000 + Math.floor(Math.random() * 5000) : 1000 + Math.floor(Math.random() * 2000)),
             development: override.development || (owner ? 35 + Math.floor(Math.random() * 25) : 20 + Math.floor(Math.random() * 20)),
             commerce: override.commerce || (owner ? 30 + Math.floor(Math.random() * 25) : 15 + Math.floor(Math.random() * 20)),
@@ -839,7 +839,7 @@ function updateCityPanel() {
     const goldIncome = calcGoldIncome(city);
     const foodIncome = calcFoodIncome(city);
     const troopCostGold = Math.floor(city.troops * 0.05);
-    const troopCostFood = Math.floor(city.troops * 0.2);
+    const troopCostFood = Math.floor(city.troops * 20);
 
     cityInfo.innerHTML = `
         <h3>${city.korean} (${city.name})</h3>
@@ -896,7 +896,7 @@ function actionsHTML(city) {
     const canDev = city.gold >= 300 && city.development < 100;
     const canCom = city.gold >= 300 && city.commerce < 100;
     const canDef = city.gold >= 500 && city.defense < 100;
-    const canRecruit = city.gold >= 200 && city.food >= 300 && city.population >= 3000;
+    const canRecruit = city.gold >= 200 && city.food >= 30000 && city.population >= 3000;
 
     const targets = getAttackTargets(city.id);
     const canAttack = city.troops >= 1000 && targets.length > 0;
@@ -913,7 +913,7 @@ function actionsHTML(city) {
             <span>방비 (방어+5)</span><span class="cost">금 500</span>
         </button>
         <button class="action-btn" ${canRecruit ? '' : 'disabled'} onclick="doAction('${city.id}','recruit')">
-            <span>징병 (병력+1000)</span><span class="cost">금200 식300</span>
+            <span>징병 (병력+1000)</span><span class="cost">금200 식30,000</span>
         </button>
         <button class="action-btn attack-btn" ${canAttack ? '' : 'disabled'} onclick="enterAttackMode('${city.id}')">
             <span>⚔ 출병</span><span class="cost">행동 1 소모</span>
@@ -972,9 +972,9 @@ function doAction(cityId, action) {
             addLog(city.korean, `방비 강화 (방어 ${city.defense - 5} → ${city.defense})`, 'good');
             break;
         case 'recruit':
-            if (city.gold < 200 || city.food < 300 || city.population < 3000) return;
+            if (city.gold < 200 || city.food < 30000 || city.population < 3000) return;
             city.gold -= 200;
-            city.food -= 300;
+            city.food -= 30000;
             city.troops += 1000;
             city.population -= 1000;
             city.actionsLeft--;
@@ -1005,7 +1005,7 @@ function calcGoldIncome(city) {
 
 function calcFoodIncome(city) {
     const season = getSeason(gameState.month);
-    return Math.floor(city.population / 1000 * city.development / 100 * 8 * season.foodMod);
+    return Math.floor(city.population / 1000 * city.development / 100 * 800 * season.foodMod);
 }
 
 function processTurnEconomy() {
@@ -1022,7 +1022,7 @@ function processTurnEconomy() {
 
         // Troop maintenance
         const troopCostGold = Math.floor(city.troops * 0.05);
-        const troopCostFood = Math.floor(city.troops * 0.2);
+        const troopCostFood = Math.floor(city.troops * 20);
         city.gold -= troopCostGold;
         city.food -= troopCostFood;
 
@@ -1031,7 +1031,7 @@ function processTurnEconomy() {
 
         // Food shortage → desertion
         if (city.food < 0) {
-            const deserted = Math.min(city.troops, Math.floor(Math.abs(city.food) / 0.5));
+            const deserted = Math.min(city.troops, Math.floor(Math.abs(city.food) / 50));
             const actualDesert = Math.max(100, Math.floor(deserted * 0.3));
             city.troops = Math.max(0, city.troops - actualDesert);
             city.food = 0;
@@ -1078,8 +1078,8 @@ function processAITurns() {
             while (city.actionsLeft > 0) {
                 let didAction = false;
 
-                if (city.troops < 3000 && city.gold >= 200 && city.food >= 300 && city.population >= 3000) {
-                    city.gold -= 200; city.food -= 300;
+                if (city.troops < 3000 && city.gold >= 200 && city.food >= 30000 && city.population >= 3000) {
+                    city.gold -= 200; city.food -= 30000;
                     city.troops += 1000; city.population -= 1000;
                     city.actionsLeft--; didAction = true;
                 } else if (city.development < 60 && city.gold >= 300) {
@@ -1242,7 +1242,7 @@ function updateFactionPanel() {
     const totalGoldIncome = playerCities.reduce((s, c) => s + calcGoldIncome(c), 0);
     const totalFoodIncome = playerCities.reduce((s, c) => s + calcFoodIncome(c), 0);
     const totalTroopCostGold = playerCities.reduce((s, c) => s + Math.floor(c.troops * 0.05), 0);
-    const totalTroopCostFood = playerCities.reduce((s, c) => s + Math.floor(c.troops * 0.2), 0);
+    const totalTroopCostFood = playerCities.reduce((s, c) => s + Math.floor(c.troops * 20), 0);
 
     detailEl.innerHTML = `
         <h4>${FACTIONS[gameState.playerFaction].name} 세력</h4>
