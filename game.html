@@ -918,7 +918,7 @@ function updateCityPanel() {
     const goldIncome = calcGoldIncome(city);
     const foodIncome = calcFoodIncome(city);
     const troopCostGold = Math.floor(city.troops * 0.05);
-    const troopCostFood = Math.floor(city.troops * 20);
+    const troopCostFood = Math.floor(city.troops * 8);
 
     cityInfo.innerHTML = `
         <h3>${city.korean} (${city.name})</h3>
@@ -1171,7 +1171,7 @@ function processTurnEconomy() {
 
         // Troop maintenance
         const troopCostGold = Math.floor(city.troops * 0.05);
-        const troopCostFood = Math.floor(city.troops * 20);
+        const troopCostFood = Math.floor(city.troops * 8);
         city.gold -= troopCostGold;
         city.food -= troopCostFood;
 
@@ -1437,7 +1437,7 @@ function updateFactionPanel() {
     const totalGoldIncome = playerCities.reduce((s, c) => s + calcGoldIncome(c), 0);
     const totalFoodIncome = playerCities.reduce((s, c) => s + calcFoodIncome(c), 0);
     const totalTroopCostGold = playerCities.reduce((s, c) => s + Math.floor(c.troops * 0.05), 0);
-    const totalTroopCostFood = playerCities.reduce((s, c) => s + Math.floor(c.troops * 20), 0);
+    const totalTroopCostFood = playerCities.reduce((s, c) => s + Math.floor(c.troops * 8), 0);
 
     detailEl.innerHTML = `
         <h4>${FACTIONS[gameState.playerFaction].name} 세력</h4>
