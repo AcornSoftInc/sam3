@@ -688,6 +688,7 @@ let cityLabels = {};
 let troopBadges = {};
 let attackLines = [];    // Leaflet polylines for attack mode
 let attackMode = false;  // true when selecting attack target
+let turnProcessing = false; // guard against double endTurn calls
 
 // ============================================================
 // TITLE SCREEN
@@ -1307,6 +1308,10 @@ function processAIOfficerMoves() {
 // ============================================================
 
 function endTurn() {
+    // Prevent double-processing from rapid clicks
+    if (turnProcessing) return;
+    turnProcessing = true;
+
     // Cancel attack mode if active
     if (attackMode) cancelAttackMode();
 
@@ -1352,6 +1357,7 @@ function endTurn() {
         turnMsg.textContent = `${gameState.year}년 ${gameState.month}월 (${season.name})`;
         setTimeout(() => {
             turnOverlay.classList.remove('active');
+            turnProcessing = false;
             // 7. Check victory/defeat after UI update
             checkVictory();
             checkGameOver();
