@@ -418,15 +418,21 @@ const GAME_CITIES = [
     // 연주
     { id: "jinryu", name: "陈留", korean: "진류", region: "연주", lat: 34.85, lng: 114.35 },
     { id: "bokyang", name: "濮阳", korean: "복양", region: "연주", lat: 35.76, lng: 115.03 },
+    { id: "sanyang", name: "山阳", korean: "산양", region: "연주", lat: 35.40, lng: 116.30 },
+    { id: "taesan", name: "泰山", korean: "태산", region: "연주", lat: 36.00, lng: 117.05 },
     // 서주
     { id: "paengseong", name: "彭城", korean: "팽성", region: "서주", lat: 34.26, lng: 117.19 },
     { id: "habi", name: "下邳", korean: "하비", region: "서주", lat: 34.32, lng: 117.95 },
     { id: "sopae", name: "小沛", korean: "소패", region: "서주", lat: 34.72, lng: 116.93 },
     { id: "gwangneung", name: "广陵", korean: "광릉", region: "서주", lat: 32.39, lng: 119.43 },
+    { id: "nangya", name: "琅琊", korean: "낭야", region: "서주", lat: 35.10, lng: 118.35 },
+    { id: "donghae", name: "东海", korean: "동해", region: "서주", lat: 34.55, lng: 118.70 },
     // 예주
     { id: "heochang", name: "许昌", korean: "허창", region: "예주", lat: 34.02, lng: 113.85 },
     { id: "yeonam", name: "汝南", korean: "여남", region: "예주", lat: 33.00, lng: 114.35 },
     { id: "suchun", name: "寿春", korean: "수춘", region: "예주", lat: 32.57, lng: 116.78 },
+    { id: "cho", name: "谯", korean: "초", region: "예주", lat: 33.88, lng: 115.78 },
+    { id: "yeoeum", name: "汝阴", korean: "여음", region: "예주", lat: 33.40, lng: 115.80 },
     { id: "wan", name: "宛", korean: "완", region: "예주", lat: 33.00, lng: 112.53 },
     { id: "namyang", name: "南阳", korean: "남양", region: "예주", lat: 33.26, lng: 112.53 },
     // 사예
@@ -534,20 +540,26 @@ const ADJACENCY = {
     nampi: ["bukpyeong", "gye", "eop", "pyeongwon"],
     pyeongwon: ["nampi", "eop", "bokyang", "imchi"],
     // 청주
-    imchi: ["pyeongwon", "bokyang", "sopae", "bukhae"],
-    bukhae: ["imchi"],
+    imchi: ["pyeongwon", "bokyang", "sopae", "bukhae", "taesan", "nangya"],
+    bukhae: ["imchi", "nangya"],
     // 연주
-    jinryu: ["bokyang", "nakyang", "heochang", "sopae"],
-    bokyang: ["eop", "pyeongwon", "jinryu", "sopae", "imchi"],
+    jinryu: ["bokyang", "nakyang", "heochang", "sopae", "cho"],
+    bokyang: ["eop", "pyeongwon", "jinryu", "sopae", "imchi", "sanyang"],
+    sanyang: ["bokyang", "sopae", "cho", "taesan"],
+    taesan: ["sanyang", "imchi", "nangya"],
     // 서주
     paengseong: ["sopae", "habi"],
-    habi: ["paengseong", "sopae", "gwangneung", "suchun"],
-    sopae: ["bokyang", "jinryu", "imchi", "paengseong", "habi"],
-    gwangneung: ["habi", "suchun", "geonup"],
+    habi: ["paengseong", "sopae", "gwangneung", "suchun", "nangya", "donghae"],
+    sopae: ["bokyang", "jinryu", "imchi", "paengseong", "habi", "sanyang", "cho"],
+    gwangneung: ["habi", "suchun", "geonup", "donghae"],
+    nangya: ["taesan", "imchi", "bukhae", "donghae", "habi"],
+    donghae: ["nangya", "habi", "gwangneung"],
     // 예주
-    heochang: ["jinryu", "nakyang", "yeonam", "wan"],
-    yeonam: ["heochang", "wan", "suchun", "namyang"],
-    suchun: ["yeonam", "habi", "gwangneung", "yeogang"],
+    heochang: ["jinryu", "nakyang", "yeonam", "wan", "cho"],
+    yeonam: ["heochang", "wan", "suchun", "namyang", "yeoeum"],
+    suchun: ["yeonam", "habi", "gwangneung", "yeogang", "yeoeum"],
+    cho: ["jinryu", "sopae", "sanyang", "yeonam", "yeoeum", "heochang"],
+    yeoeum: ["cho", "yeonam", "suchun"],
     wan: ["heochang", "yeonam", "namyang", "nakyang"],
     namyang: ["wan", "yeonam", "yangyang", "sinya", "sangyong"],
     // 사예
