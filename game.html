@@ -1394,10 +1394,10 @@ function showAttackLines(srcCityId) {
     }
 }
 
-function showBattleAnimation(srcCity, dstCity, callback) {
+function showBattleAnimation(srcCity, dstCity) {
     const line = L.polyline(
         [[srcCity.lat, srcCity.lng], [dstCity.lat, dstCity.lng]],
-        { color: '#ff5252', weight: 3, dashArray: '4,8', opacity: 0.9, className: 'battle-line-anim' }
+        { color: '#ff5252', weight: 3, dashArray: '4,8', opacity: 0.9 }
     ).addTo(map);
 
     let opacity = 0.9;
@@ -1405,10 +1405,9 @@ function showBattleAnimation(srcCity, dstCity, callback) {
         opacity -= 0.15;
         if (opacity <= 0) {
             clearInterval(anim);
-            map.removeLayer(line);
-            if (callback) callback();
+            try { map.removeLayer(line); } catch(e) {}
         } else {
-            line.setStyle({ opacity });
+            try { line.setStyle({ opacity }); } catch(e) {}
         }
     }, 80);
 }
@@ -1496,9 +1495,10 @@ function executeAttack(srcCityId, dstCityId) {
     const src = gameState.cities[srcCityId];
     const dst = gameState.cities[dstCityId];
     const slider = document.getElementById('troop-slider');
+    if (!slider) return;
     const attackTroops = parseInt(slider.value);
 
-    if (attackTroops < 1000 || attackTroops > src.troops) return;
+    if (!attackTroops || attackTroops < 1000 || attackTroops > src.troops) return;
 
     attackMode = false;
     clearAttackLines();
@@ -1506,31 +1506,32 @@ function executeAttack(srcCityId, dstCityId) {
     // Consume 1 action
     src.actionsLeft--;
 
-    // Animate then resolve
-    showBattleAnimation(src, dst, () => {
-        const isBloodless = !dst.owner || dst.troops <= 0;
-        const result = resolveBattle(attackTroops, dst);
-        const dstOwnerName = dst.owner ? FACTIONS[dst.owner].name : '공백지';
+    // Resolve battle IMMEDIATELY (not inside animation callback)
+    const isBloodless = !dst.owner || dst.troops <= 0;
+    const result = resolveBattle(attackTroops, dst);
+    const dstOwnerName = dst.owner ? FACTIONS[dst.owner].name : '공백지';
 
-        applyBattleResult(src, dst, attackTroops, result, gameState.playerFaction);
+    applyBattleResult(src, dst, attackTroops, result, gameState.playerFaction);
 
-        // Show battle popup
-        showBattlePopup(src, dst, attackTroops, result, dstOwnerName, isBloodless);
+    // Play animation (purely visual, non-blocking)
+    try { showBattleAnimation(src, dst); } catch(e) {}
 
-        // Log
-        if (isBloodless) {
-            addLog(src.korean, `→ ${dst.korean} 무혈 점령! (병력 ${formatNum(result.attRemain)} 주둔)`, 'good');
-        } else if (result.victory) {
-            addLog(src.korean, `→ ${dst.korean} 공격 승리! (아군 손실: ${formatNum(result.attLoss)}, 적 손실: ${formatNum(result.defLoss)})`, 'good');
-        } else {
-            addLog(src.korean, `→ ${dst.korean} 공격 패배... (공격군 ${formatNum(attackTroops)} 전멸)`, 'bad');
-        }
+    // Show battle popup
+    showBattlePopup(src, dst, attackTroops, result, dstOwnerName, isBloodless);
 
-        recalcFactions();
-        updateAllUI();
-        checkVictory();
-        checkGameOver();
-    });
+    // Log
+    if (isBloodless) {
+        addLog(src.korean, `→ ${dst.korean} 무혈 점령! (병력 ${formatNum(result.attRemain)} 주둔)`, 'good');
+    } else if (result.victory) {
+        addLog(src.korean, `→ ${dst.korean} 공격 승리! (아군 손실: ${formatNum(result.attLoss)}, 적 손실: ${formatNum(result.defLoss)})`, 'good');
+    } else {
+        addLog(src.korean, `→ ${dst.korean} 공격 패배... (공격군 ${formatNum(attackTroops)} 전멸)`, 'bad');
+    }
+
+    recalcFactions();
+    updateAllUI();
+    checkVictory();
+    checkGameOver();
 }
 
 function showBattlePopup(src, dst, attackTroops, result, dstOwnerName, isBloodless) {
