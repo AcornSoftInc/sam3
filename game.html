@@ -223,6 +223,86 @@
             text-shadow: 0 0 20px rgba(255,215,0,0.5);
         }
 
+        /* ===== Combat UI ===== */
+        .action-btn.attack-btn {
+            background: rgba(244,67,54,0.15); border-color: #f44336; color: #ff8a80;
+        }
+        .action-btn.attack-btn:hover:not(:disabled) {
+            background: rgba(244,67,54,0.3); border-color: #ff5252;
+        }
+
+        .attack-target-panel { margin-top: 8px; }
+        .attack-target-panel h4 { color: #f44336; font-size: 12px; margin-bottom: 6px; border-bottom: 1px solid #5a2020; padding-bottom: 4px; }
+        .target-btn {
+            display: flex; justify-content: space-between; align-items: center;
+            width: 100%; background: rgba(244,67,54,0.08); border: 1px solid #5a2020;
+            color: #e0e0e0; padding: 7px 10px; border-radius: 5px; cursor: pointer;
+            font-size: 11px; font-family: inherit; margin-bottom: 4px; transition: all 0.2s;
+        }
+        .target-btn:hover { background: rgba(244,67,54,0.2); border-color: #f44336; }
+        .target-btn .target-info { font-size: 10px; color: #aaa; }
+        .target-btn.empty-city { border-color: #8d6e00; background: rgba(255,215,0,0.08); }
+        .target-btn.empty-city:hover { background: rgba(255,215,0,0.2); border-color: #ffd700; }
+
+        .troop-slider-section { margin-top: 10px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 6px; }
+        .troop-slider-section label { font-size: 12px; color: #ccc; display: block; margin-bottom: 6px; }
+        .troop-slider-section input[type="range"] { width: 100%; margin: 4px 0; accent-color: #f44336; }
+        .troop-slider-section .slider-info { display: flex; justify-content: space-between; font-size: 11px; color: #aaa; }
+        .confirm-attack-btn {
+            width: 100%; margin-top: 8px; padding: 8px; background: #c62828; border: none;
+            color: #fff; border-radius: 5px; cursor: pointer; font-size: 13px; font-weight: bold;
+            font-family: inherit; transition: background 0.2s;
+        }
+        .confirm-attack-btn:hover { background: #e53935; }
+        .cancel-attack-btn {
+            width: 100%; margin-top: 4px; padding: 6px; background: rgba(255,255,255,0.05);
+            border: 1px solid #444; color: #aaa; border-radius: 5px; cursor: pointer;
+            font-size: 11px; font-family: inherit; transition: all 0.2s;
+        }
+        .cancel-attack-btn:hover { background: rgba(255,255,255,0.1); }
+
+        /* Battle Result Popup */
+        #battle-popup {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.75); z-index: 6000;
+            align-items: center; justify-content: center;
+        }
+        #battle-popup.active { display: flex; }
+        .battle-box {
+            background: #1a1a2e; border: 2px solid #c62828; border-radius: 12px;
+            padding: 24px 30px; text-align: center; min-width: 320px; max-width: 420px;
+            box-shadow: 0 0 40px rgba(198,40,40,0.4);
+        }
+        .battle-box.victory { border-color: #ffd700; box-shadow: 0 0 40px rgba(255,215,0,0.4); }
+        .battle-box h2 { font-size: 22px; margin-bottom: 12px; }
+        .battle-box .battle-detail { font-size: 12px; color: #bbb; text-align: left; line-height: 1.8; margin: 12px 0; }
+        .battle-box .battle-detail .att { color: #ff8a80; }
+        .battle-box .battle-detail .def { color: #90caf9; }
+        .battle-box button {
+            margin-top: 12px; padding: 8px 30px; background: #444; border: none; color: #fff;
+            border-radius: 6px; cursor: pointer; font-size: 14px; font-family: inherit;
+        }
+        .battle-box button:hover { background: #555; }
+
+        /* Victory / Game Over Overlay */
+        #victory-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 7000;
+            align-items: center; justify-content: center;
+        }
+        #victory-overlay.active { display: flex; }
+        .victory-box {
+            text-align: center; padding: 40px;
+        }
+        .victory-box h1 { font-size: 42px; margin-bottom: 12px; text-shadow: 0 0 30px currentColor; }
+        .victory-box p { font-size: 16px; color: #ccc; margin-bottom: 24px; }
+        .victory-box button {
+            padding: 12px 40px; background: linear-gradient(135deg, #ffd700, #f0a500); border: none;
+            color: #1a1a2e; font-size: 16px; font-weight: bold; border-radius: 8px; cursor: pointer;
+            font-family: inherit;
+        }
+        .victory-box button:hover { transform: scale(1.05); }
+
         /* Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #1a1a2e; }
@@ -302,6 +382,16 @@
 <!-- Turn Transition Overlay -->
 <div id="turn-overlay">
     <div class="turn-msg" id="turn-msg"></div>
+</div>
+
+<!-- Battle Result Popup -->
+<div id="battle-popup">
+    <div class="battle-box" id="battle-box"></div>
+</div>
+
+<!-- Victory / Game Over Overlay -->
+<div id="victory-overlay">
+    <div class="victory-box" id="victory-box"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -429,6 +519,77 @@ const SCENARIO_190 = {
 };
 
 // ============================================================
+// ADJACENCY GRAPH (bidirectional)
+// ============================================================
+
+const ADJACENCY = {
+    // 유주
+    bukpyeong: ["gye", "nampi"],
+    gye: ["bukpyeong", "nampi", "jinyang"],
+    // 병주
+    jinyang: ["gye", "sangdang", "eop"],
+    sangdang: ["jinyang", "eop", "nakyang"],
+    // 기주
+    eop: ["jinyang", "nampi", "pyeongwon", "bokyang", "sangdang"],
+    nampi: ["bukpyeong", "gye", "eop", "pyeongwon"],
+    pyeongwon: ["nampi", "eop", "bokyang", "imchi"],
+    // 청주
+    imchi: ["pyeongwon", "bokyang", "sopae", "bukhae"],
+    bukhae: ["imchi"],
+    // 연주
+    jinryu: ["bokyang", "nakyang", "heochang", "sopae"],
+    bokyang: ["eop", "pyeongwon", "jinryu", "sopae", "imchi"],
+    // 서주
+    paengseong: ["sopae", "habi"],
+    habi: ["paengseong", "sopae", "gwangneung", "suchun"],
+    sopae: ["bokyang", "jinryu", "imchi", "paengseong", "habi"],
+    gwangneung: ["habi", "suchun", "geonup"],
+    // 예주
+    heochang: ["jinryu", "nakyang", "yeonam", "wan"],
+    yeonam: ["heochang", "wan", "suchun", "namyang"],
+    suchun: ["yeonam", "habi", "gwangneung", "yeogang"],
+    wan: ["heochang", "yeonam", "namyang", "nakyang"],
+    namyang: ["wan", "yeonam", "yangyang", "sinya", "sangyong"],
+    // 사예
+    nakyang: ["sangdang", "jinryu", "heochang", "wan", "jangan"],
+    jangan: ["nakyang", "anjeong", "cheonsu", "hanjung"],
+    // 양주(량)
+    cheonsu: ["jangan", "anjeong", "hanjung"],
+    muwi: ["anjeong"],
+    anjeong: ["jangan", "cheonsu", "muwi"],
+    // 형주
+    yangyang: ["namyang", "sinya", "gangneung", "gangha", "sangyong"],
+    gangneung: ["yangyang", "gangha", "mureung", "jangsa", "yeongan"],
+    gangha: ["yangyang", "gangneung", "jangsa", "sisang", "yeogang"],
+    jangsa: ["gangneung", "gangha", "gyeyang", "yeongneung", "mureung"],
+    gyeyang: ["jangsa", "yeongneung", "beonu"],
+    yeongneung: ["jangsa", "gyeyang", "mureung"],
+    mureung: ["gangneung", "jangsa", "yeongneung"],
+    sinya: ["namyang", "yangyang", "sangyong"],
+    sangyong: ["namyang", "sinya", "yangyang", "hanjung", "yeongan"],
+    // 익주
+    seongdo: ["jaedong", "gangju", "geonnyeong"],
+    hanjung: ["jangan", "cheonsu", "sangyong", "jaedong", "nangjung"],
+    jaedong: ["hanjung", "seongdo", "nangjung"],
+    nangjung: ["hanjung", "jaedong", "gangju", "yeongan"],
+    gangju: ["seongdo", "nangjung", "yeongan", "geonnyeong"],
+    yeongan: ["nangjung", "gangju", "gangneung", "sangyong"],
+    geonnyeong: ["seongdo", "gangju", "yeongchang", "unnam"],
+    yeongchang: ["geonnyeong", "unnam"],
+    unnam: ["geonnyeong", "yeongchang"],
+    // 양주(양)
+    geonup: ["gwangneung", "yeogang", "ogun"],
+    ogun: ["geonup", "hoegye"],
+    hoegye: ["ogun", "yejang"],
+    sisang: ["gangha", "yeogang", "yejang"],
+    yeogang: ["suchun", "geonup", "sisang", "yejang"],
+    yejang: ["sisang", "yeogang", "hoegye", "beonu"],
+    // 교주
+    beonu: ["gyeyang", "yejang", "gyoji"],
+    gyoji: ["beonu"],
+};
+
+// ============================================================
 // GAME STATE
 // ============================================================
 
@@ -439,6 +600,8 @@ let map = null;
 let cityMarkers = {};
 let cityLabels = {};
 let troopBadges = {};
+let attackLines = [];    // Leaflet polylines for attack mode
+let attackMode = false;  // true when selecting attack target
 
 // ============================================================
 // TITLE SCREEN
@@ -633,6 +796,9 @@ function updateCityMarker(cityId) {
 // ============================================================
 
 function selectCity(cityId) {
+    if (attackMode) {
+        cancelAttackMode();
+    }
     const prevId = selectedCityId;
     selectedCityId = cityId;
     if (prevId) updateCityMarker(prevId);
@@ -710,10 +876,18 @@ function actionsHTML(city) {
         </div>`;
     }
 
+    // Attack mode: show target list
+    if (attackMode && selectedCityId === city.id) {
+        return attackTargetHTML(city);
+    }
+
     const canDev = city.gold >= 300 && city.development < 100;
     const canCom = city.gold >= 300 && city.commerce < 100;
     const canDef = city.gold >= 500 && city.defense < 100;
     const canRecruit = city.gold >= 200 && city.food >= 300 && city.population >= 3000;
+
+    const targets = getAttackTargets(city.id);
+    const canAttack = city.troops >= 1000 && targets.length > 0;
 
     return `<div class="action-section">
         <h4>행동 (남은 횟수: ${city.actionsLeft}/3)</h4>
@@ -729,7 +903,30 @@ function actionsHTML(city) {
         <button class="action-btn" ${canRecruit ? '' : 'disabled'} onclick="doAction('${city.id}','recruit')">
             <span>징병 (병력+1000)</span><span class="cost">금200 식300</span>
         </button>
+        <button class="action-btn attack-btn" ${canAttack ? '' : 'disabled'} onclick="enterAttackMode('${city.id}')">
+            <span>⚔ 출병</span><span class="cost">행동 1 소모</span>
+        </button>
     </div>`;
+}
+
+function attackTargetHTML(city) {
+    const targets = getAttackTargets(city.id);
+    let html = `<div class="attack-target-panel">
+        <h4>⚔ 출병 대상 선택 (${city.korean})</h4>`;
+
+    for (const t of targets) {
+        const ownerName = t.owner ? FACTIONS[t.owner].name : '공백지';
+        const ownerColor = t.owner ? FACTIONS[t.owner].color : '#888';
+        const isEmpty = !t.owner || t.troops <= 0;
+        html += `<button class="target-btn ${isEmpty ? 'empty-city' : ''}" onclick="selectAttackTarget('${city.id}','${t.id}')">
+            <span>${t.korean} <span style="color:${ownerColor}">(${ownerName})</span></span>
+            <span class="target-info">병력 ${formatNum(t.troops)}</span>
+        </button>`;
+    }
+
+    html += `<button class="cancel-attack-btn" onclick="cancelAttackMode()">취소</button>`;
+    html += `</div>`;
+    return html;
 }
 
 // ============================================================
@@ -912,6 +1109,9 @@ function processAITurns() {
 // ============================================================
 
 function endTurn() {
+    // Cancel attack mode if active
+    if (attackMode) cancelAttackMode();
+
     // Show transition
     const turnOverlay = document.getElementById('turn-overlay');
     const turnMsg = document.getElementById('turn-msg');
@@ -919,25 +1119,22 @@ function endTurn() {
     turnMsg.textContent = '턴 처리 중...';
 
     setTimeout(() => {
-        // 1. AI actions
+        // 1. AI internal actions (develop, recruit, etc.)
         processAITurns();
 
-        // 2. Economy
+        // 2. AI combat
+        processAICombat();
+
+        // 3. Economy
         processTurnEconomy();
 
-        // 3. Advance month
+        // 4. Advance month
         gameState.month++;
         if (gameState.month > 12) {
             gameState.month = 1;
             gameState.year++;
         }
         gameState.turn++;
-
-        // 4. Check player elimination
-        const playerCities = Object.values(gameState.cities).filter(c => c.owner === gameState.playerFaction);
-        if (playerCities.length === 0) {
-            addLog('시스템', '모든 도시를 잃었습니다. 게임 오버!', 'bad');
-        }
 
         // 5. Recalculate faction aggregates
         recalcFactions();
@@ -954,6 +1151,9 @@ function endTurn() {
         turnMsg.textContent = `${gameState.year}년 ${gameState.month}월 (${season.name})`;
         setTimeout(() => {
             turnOverlay.classList.remove('active');
+            // 7. Check victory/defeat after UI update
+            checkVictory();
+            checkGameOver();
         }, 800);
     }, 300);
 }
@@ -1081,6 +1281,387 @@ function formatTroops(n) {
     if (n >= 10000) return (n / 10000).toFixed(1) + '만';
     if (n >= 1000) return (n / 1000).toFixed(1) + '천';
     return String(n);
+}
+
+// ============================================================
+// COMBAT ENGINE
+// ============================================================
+
+function getAdjacentCities(cityId) {
+    return (ADJACENCY[cityId] || []).map(id => gameState.cities[id]).filter(Boolean);
+}
+
+function resolveBattle(attackTroops, defCity) {
+    // Empty city → bloodless capture
+    if (!defCity.owner || defCity.troops <= 0) {
+        return { victory: true, attLoss: 0, defLoss: 0, attRemain: attackTroops, defRemain: 0 };
+    }
+
+    const rand = () => 0.8 + Math.random() * 0.4; // 0.8 ~ 1.2
+    const attackPower = attackTroops * rand();
+    const defensePower = defCity.troops * (defCity.defense / 100) * rand();
+
+    const victory = attackPower > defensePower;
+
+    if (victory) {
+        const defLossRate = 0.4 + Math.random() * 0.2; // 40~60%
+        const attLossRate = 0.2 + Math.random() * 0.1; // 20~30%
+        const defLoss = Math.floor(defCity.troops * defLossRate);
+        const attLoss = Math.floor(attackTroops * attLossRate);
+        return {
+            victory: true,
+            attLoss, defLoss,
+            attRemain: Math.max(1, attackTroops - attLoss),
+            defRemain: Math.max(0, defCity.troops - defLoss),
+        };
+    } else {
+        // Attacker annihilated
+        const defLossRate = 0.2 + Math.random() * 0.1;
+        const defLoss = Math.floor(defCity.troops * defLossRate);
+        return {
+            victory: false,
+            attLoss: attackTroops, defLoss,
+            attRemain: 0,
+            defRemain: Math.max(1, defCity.troops - defLoss),
+        };
+    }
+}
+
+function applyBattleResult(srcCity, dstCity, attackTroops, result, attackerFaction) {
+    // Deduct attacking troops from source
+    srcCity.troops -= attackTroops;
+    if (srcCity.troops < 0) srcCity.troops = 0;
+
+    if (result.victory) {
+        const oldOwner = dstCity.owner;
+        dstCity.owner = attackerFaction;
+        dstCity.troops = result.attRemain;
+        dstCity.loyalty = Math.max(20, dstCity.loyalty - 20);
+        // Check if old owner eliminated
+        if (oldOwner) checkElimination(oldOwner);
+    } else {
+        dstCity.troops = result.defRemain;
+    }
+}
+
+function checkElimination(factionId) {
+    if (gameState.eliminated.includes(factionId)) return;
+    const hasCities = Object.values(gameState.cities).some(c => c.owner === factionId);
+    if (!hasCities) {
+        gameState.eliminated.push(factionId);
+        addLog('시스템', `${FACTIONS[factionId].name} 세력이 멸망했습니다!`, 'bad');
+    }
+}
+
+// ============================================================
+// MAP VISUALIZATION (attack lines)
+// ============================================================
+
+function clearAttackLines() {
+    for (const line of attackLines) {
+        map.removeLayer(line);
+    }
+    attackLines = [];
+}
+
+function showAttackLines(srcCityId) {
+    clearAttackLines();
+    const src = gameState.cities[srcCityId];
+    const adjacent = ADJACENCY[srcCityId] || [];
+
+    for (const adjId of adjacent) {
+        const adj = gameState.cities[adjId];
+        if (adj.owner === gameState.playerFaction) continue; // skip own cities
+        const isEnemy = adj.owner !== null;
+        const color = isEnemy ? '#f44336' : '#ffd700';
+        const line = L.polyline(
+            [[src.lat, src.lng], [adj.lat, adj.lng]],
+            { color, weight: 2, dashArray: '8,6', opacity: 0.7 }
+        ).addTo(map);
+        attackLines.push(line);
+    }
+}
+
+function showBattleAnimation(srcCity, dstCity, callback) {
+    const line = L.polyline(
+        [[srcCity.lat, srcCity.lng], [dstCity.lat, dstCity.lng]],
+        { color: '#ff5252', weight: 3, dashArray: '4,8', opacity: 0.9, className: 'battle-line-anim' }
+    ).addTo(map);
+
+    let opacity = 0.9;
+    const anim = setInterval(() => {
+        opacity -= 0.15;
+        if (opacity <= 0) {
+            clearInterval(anim);
+            map.removeLayer(line);
+            if (callback) callback();
+        } else {
+            line.setStyle({ opacity });
+        }
+    }, 80);
+}
+
+// ============================================================
+// ATTACK UI
+// ============================================================
+
+function enterAttackMode(cityId) {
+    attackMode = true;
+    selectedCityId = cityId;
+    showAttackLines(cityId);
+    updateCityPanel();
+}
+
+function cancelAttackMode() {
+    attackMode = false;
+    clearAttackLines();
+    updateCityPanel();
+}
+
+function getAttackTargets(cityId) {
+    const adjacent = ADJACENCY[cityId] || [];
+    return adjacent
+        .map(id => gameState.cities[id])
+        .filter(c => c && c.owner !== gameState.playerFaction);
+}
+
+function selectAttackTarget(srcCityId, dstCityId) {
+    const src = gameState.cities[srcCityId];
+    const dst = gameState.cities[dstCityId];
+    clearAttackLines();
+
+    // Show line to selected target
+    const color = dst.owner ? '#f44336' : '#ffd700';
+    const line = L.polyline(
+        [[src.lat, src.lng], [dst.lat, dst.lng]],
+        { color, weight: 3, dashArray: '6,4', opacity: 0.9 }
+    ).addTo(map);
+    attackLines.push(line);
+
+    // Show troop slider in panel
+    showTroopSlider(srcCityId, dstCityId);
+}
+
+function showTroopSlider(srcCityId, dstCityId) {
+    const src = gameState.cities[srcCityId];
+    const dst = gameState.cities[dstCityId];
+    const maxTroops = src.troops;
+    const minTroops = Math.min(1000, maxTroops);
+    const dstOwnerName = dst.owner ? FACTIONS[dst.owner].name : '공백지';
+    const dstColor = dst.owner ? FACTIONS[dst.owner].color : '#888';
+    const defaultTroops = Math.max(minTroops, Math.floor(maxTroops * 0.5));
+
+    const cityInfo = document.getElementById('city-info');
+    cityInfo.innerHTML = `
+        <h3>출병: ${src.korean} → ${dst.korean}</h3>
+        <div class="city-owner" style="color:${dstColor}">대상: ${dstOwnerName} | 병력 ${formatNum(dst.troops)}</div>
+
+        <div class="troop-slider-section">
+            <label>출병 병력 선택</label>
+            <input type="range" id="troop-slider" min="${minTroops}" max="${maxTroops}" value="${defaultTroops}" step="500"
+                oninput="document.getElementById('slider-val').textContent=formatNum(parseInt(this.value))">
+            <div class="slider-info">
+                <span>최소 ${formatNum(minTroops)}</span>
+                <span id="slider-val" style="color:#ff8a80;font-weight:bold;font-size:13px;">${formatNum(defaultTroops)}</span>
+                <span>최대 ${formatNum(maxTroops)}</span>
+            </div>
+            <div style="margin-top:6px;font-size:10px;color:#888;">잔류 병력: <span id="remain-display">${formatNum(maxTroops - defaultTroops)}</span></div>
+        </div>
+
+        <button class="confirm-attack-btn" onclick="executeAttack('${srcCityId}','${dstCityId}')">⚔ 출병 확인</button>
+        <button class="cancel-attack-btn" onclick="cancelAttackMode()">취소</button>
+    `;
+
+    // Live update remain display
+    const slider = document.getElementById('troop-slider');
+    slider.addEventListener('input', () => {
+        const remain = maxTroops - parseInt(slider.value);
+        document.getElementById('remain-display').textContent = formatNum(remain);
+    });
+}
+
+function executeAttack(srcCityId, dstCityId) {
+    const src = gameState.cities[srcCityId];
+    const dst = gameState.cities[dstCityId];
+    const slider = document.getElementById('troop-slider');
+    const attackTroops = parseInt(slider.value);
+
+    if (attackTroops < 1000 || attackTroops > src.troops) return;
+
+    attackMode = false;
+    clearAttackLines();
+
+    // Consume 1 action
+    src.actionsLeft--;
+
+    // Animate then resolve
+    showBattleAnimation(src, dst, () => {
+        const isBloodless = !dst.owner || dst.troops <= 0;
+        const result = resolveBattle(attackTroops, dst);
+        const dstOwnerName = dst.owner ? FACTIONS[dst.owner].name : '공백지';
+
+        applyBattleResult(src, dst, attackTroops, result, gameState.playerFaction);
+
+        // Show battle popup
+        showBattlePopup(src, dst, attackTroops, result, dstOwnerName, isBloodless);
+
+        // Log
+        if (isBloodless) {
+            addLog(src.korean, `→ ${dst.korean} 무혈 점령! (병력 ${formatNum(result.attRemain)} 주둔)`, 'good');
+        } else if (result.victory) {
+            addLog(src.korean, `→ ${dst.korean} 공격 승리! (아군 손실: ${formatNum(result.attLoss)}, 적 손실: ${formatNum(result.defLoss)})`, 'good');
+        } else {
+            addLog(src.korean, `→ ${dst.korean} 공격 패배... (공격군 ${formatNum(attackTroops)} 전멸)`, 'bad');
+        }
+
+        recalcFactions();
+        updateAllUI();
+        checkVictory();
+        checkGameOver();
+    });
+}
+
+function showBattlePopup(src, dst, attackTroops, result, dstOwnerName, isBloodless) {
+    const popup = document.getElementById('battle-popup');
+    const box = document.getElementById('battle-box');
+
+    if (isBloodless) {
+        box.className = 'battle-box victory';
+        box.innerHTML = `
+            <h2 style="color:#ffd700;">⚔ 무혈 점령!</h2>
+            <div class="battle-detail">
+                <div><span class="att">${src.korean}</span> → <span class="def">${dst.korean}</span></div>
+                <div>주둔 병력: <span class="att">${formatNum(result.attRemain)}</span></div>
+            </div>
+            <button onclick="closeBattlePopup()">확인</button>
+        `;
+    } else if (result.victory) {
+        box.className = 'battle-box victory';
+        box.innerHTML = `
+            <h2 style="color:#ffd700;">⚔ 승리!</h2>
+            <div class="battle-detail">
+                <div><span class="att">${src.korean}</span> (${FACTIONS[gameState.playerFaction].name}) → <span class="def">${dst.korean}</span> (${dstOwnerName})</div>
+                <div>공격 병력: <span class="att">${formatNum(attackTroops)}</span> → 손실: <span class="att">-${formatNum(result.attLoss)}</span> | 잔여: <span class="att">${formatNum(result.attRemain)}</span></div>
+                <div>수비 병력: <span class="def">${formatNum(result.defLoss + result.defRemain)}</span> → 손실: <span class="def">-${formatNum(result.defLoss)}</span></div>
+                <div style="margin-top:4px;color:#ffd700;">도시 점령 완료! 주둔: ${formatNum(result.attRemain)}</div>
+            </div>
+            <button onclick="closeBattlePopup()">확인</button>
+        `;
+    } else {
+        box.className = 'battle-box';
+        box.innerHTML = `
+            <h2 style="color:#f44336;">⚔ 패배...</h2>
+            <div class="battle-detail">
+                <div><span class="att">${src.korean}</span> (${FACTIONS[gameState.playerFaction].name}) → <span class="def">${dst.korean}</span> (${dstOwnerName})</div>
+                <div>공격 병력: <span class="att">${formatNum(attackTroops)}</span> → <span class="att" style="color:#f44336;">전멸</span></div>
+                <div>수비 병력 잔여: <span class="def">${formatNum(result.defRemain)}</span></div>
+            </div>
+            <button onclick="closeBattlePopup()">확인</button>
+        `;
+    }
+
+    popup.classList.add('active');
+}
+
+function closeBattlePopup() {
+    document.getElementById('battle-popup').classList.remove('active');
+}
+
+// ============================================================
+// AI COMBAT
+// ============================================================
+
+function processAICombat() {
+    for (const [fid, faction] of Object.entries(FACTIONS)) {
+        if (fid === gameState.playerFaction) continue;
+        if (gameState.eliminated.includes(fid)) continue;
+
+        const myCities = Object.values(gameState.cities).filter(c => c.owner === fid);
+        for (const city of myCities) {
+            if (city.troops <= 8000) continue;
+
+            const targets = (ADJACENCY[city.id] || [])
+                .map(id => gameState.cities[id])
+                .filter(c => c && c.owner !== fid);
+
+            if (targets.length === 0) continue;
+
+            // Prioritize: empty cities first, then weak enemies (< 3000 troops)
+            const emptyTargets = targets.filter(t => !t.owner || t.troops <= 0);
+            const weakTargets = targets.filter(t => t.owner && t.troops > 0 && t.troops < 3000);
+
+            let target = null;
+            if (emptyTargets.length > 0) {
+                target = emptyTargets[Math.floor(Math.random() * emptyTargets.length)];
+            } else if (weakTargets.length > 0) {
+                // Pick weakest
+                weakTargets.sort((a, b) => a.troops - b.troops);
+                target = weakTargets[0];
+            }
+
+            if (!target) continue;
+
+            // Keep at least 2000 troops in city
+            const maxSend = city.troops - 2000;
+            if (maxSend < 1000) continue;
+            const sendTroops = Math.min(maxSend, Math.max(3000, Math.floor(city.troops * 0.6)));
+
+            const isBloodless = !target.owner || target.troops <= 0;
+            const result = resolveBattle(sendTroops, target);
+            const targetOwnerName = target.owner ? FACTIONS[target.owner]?.name || '공백지' : '공백지';
+
+            applyBattleResult(city, target, sendTroops, result, fid);
+
+            if (isBloodless) {
+                addLog('전투', `${faction.name}: ${city.korean} → ${target.korean} 무혈 점령`, 'info');
+            } else if (result.victory) {
+                addLog('전투', `${faction.name}: ${city.korean} → ${target.korean}(${targetOwnerName}) 공격 승리!`, 'info');
+            } else {
+                addLog('전투', `${faction.name}: ${city.korean} → ${target.korean}(${targetOwnerName}) 공격 패배`, 'info');
+            }
+        }
+    }
+}
+
+// ============================================================
+// VICTORY / DEFEAT
+// ============================================================
+
+function checkVictory() {
+    const allOwned = Object.values(gameState.cities).every(c => c.owner === gameState.playerFaction);
+    if (allOwned) {
+        showVictoryScreen(true);
+    }
+}
+
+function checkGameOver() {
+    const playerCities = Object.values(gameState.cities).filter(c => c.owner === gameState.playerFaction);
+    if (playerCities.length === 0) {
+        showVictoryScreen(false);
+    }
+}
+
+function showVictoryScreen(isVictory) {
+    const overlay = document.getElementById('victory-overlay');
+    const box = document.getElementById('victory-box');
+
+    if (isVictory) {
+        box.innerHTML = `
+            <h1 style="color:#ffd700;">天下統一!</h1>
+            <p>${FACTIONS[gameState.playerFaction].name}(이)가 천하를 통일하였습니다!</p>
+            <p style="font-size:13px;color:#888;">턴: ${gameState.turn} | ${gameState.year}년 ${gameState.month}월</p>
+            <button onclick="location.reload()">타이틀로</button>
+        `;
+    } else {
+        box.innerHTML = `
+            <h1 style="color:#f44336;">게임 오버</h1>
+            <p>${FACTIONS[gameState.playerFaction].name} 세력이 멸망하였습니다...</p>
+            <p style="font-size:13px;color:#888;">턴: ${gameState.turn} | ${gameState.year}년 ${gameState.month}월</p>
+            <button onclick="location.reload()">타이틀로</button>
+        `;
+    }
+
+    overlay.classList.add('active');
 }
 
 // ============================================================
