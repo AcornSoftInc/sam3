@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>삼국지 전략 시뮬레이션</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Malgun Gothic', sans-serif; background: #1a1a2e; color: #e0e0e0; overflow: hidden; }
+
+        /* ===== Title Screen ===== */
+        #title-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            z-index: 9999; display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+        }
+        #title-screen h1 {
+            font-size: 52px; color: #ffd700; text-shadow: 0 0 30px rgba(255,215,0,0.5);
+            margin-bottom: 8px; letter-spacing: 8px;
+        }
+        #title-screen .subtitle {
+            font-size: 16px; color: #aaa; margin-bottom: 40px; letter-spacing: 4px;
+        }
+        .scenario-select { text-align: center; margin-bottom: 30px; }
+        .scenario-select h3 { color: #ffd700; margin-bottom: 15px; font-size: 18px; }
+        .scenario-btn {
+            background: rgba(255,215,0,0.1); border: 1px solid #ffd700; color: #ffd700;
+            padding: 10px 30px; border-radius: 6px; cursor: pointer; font-size: 14px;
+            font-family: inherit; transition: all 0.3s;
+        }
+        .scenario-btn:hover { background: rgba(255,215,0,0.3); }
+        .scenario-btn.active { background: rgba(255,215,0,0.3); box-shadow: 0 0 10px rgba(255,215,0,0.3); }
+
+        .faction-grid {
+            display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;
+            max-width: 700px; margin-bottom: 30px;
+        }
+        .faction-card {
+            background: rgba(255,255,255,0.05); border: 2px solid #444;
+            border-radius: 8px; padding: 12px; text-align: center; cursor: pointer;
+            transition: all 0.3s;
+        }
+        .faction-card:hover { border-color: #ffd700; background: rgba(255,215,0,0.1); }
+        .faction-card.selected { border-color: #ffd700; background: rgba(255,215,0,0.2); box-shadow: 0 0 15px rgba(255,215,0,0.3); }
+        .faction-card .lord { font-size: 18px; font-weight: bold; margin-bottom: 4px; }
+        .faction-card .cities { font-size: 11px; color: #aaa; }
+        .faction-card .color-bar { height: 3px; border-radius: 2px; margin-top: 8px; }
+
+        #start-btn {
+            background: linear-gradient(135deg, #ffd700, #f0a500); border: none;
+            color: #1a1a2e; padding: 14px 50px; border-radius: 8px; font-size: 18px;
+            font-weight: bold; cursor: pointer; font-family: inherit;
+            transition: all 0.3s; letter-spacing: 2px;
+        }
+        #start-btn:hover { transform: scale(1.05); box-shadow: 0 0 20px rgba(255,215,0,0.5); }
+        #start-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        /* ===== Game Layout ===== */
+        #game-screen { display: none; width: 100vw; height: 100vh; }
+
+        /* Top Bar */
+        #top-bar {
+            height: 44px; background: rgba(15,15,30,0.95); border-bottom: 1px solid #333;
+            display: flex; align-items: center; padding: 0 16px; z-index: 1000;
+            position: relative;
+        }
+        #top-bar .turn-info { font-size: 15px; color: #ffd700; font-weight: bold; flex: 1; }
+        #top-bar .turn-info .season { font-size: 12px; margin-left: 8px; padding: 2px 8px; border-radius: 4px; }
+        .season-spring { background: #2e7d32; color: #a5d6a7; }
+        .season-summer { background: #c62828; color: #ef9a9a; }
+        .season-autumn { background: #e65100; color: #ffcc80; }
+        .season-winter { background: #1565c0; color: #90caf9; }
+        #top-bar .player-resources { display: flex; gap: 18px; margin-right: 16px; font-size: 13px; }
+        #top-bar .player-resources span { color: #ccc; }
+        #top-bar .player-resources .val { font-weight: bold; }
+        .res-gold .val { color: #ffd700; }
+        .res-food .val { color: #8bc34a; }
+        .res-troops .val { color: #f44336; }
+        .res-cities .val { color: #29b6f6; }
+        #end-turn-btn {
+            background: #c62828; border: none; color: #fff; padding: 6px 20px;
+            border-radius: 4px; cursor: pointer; font-size: 13px; font-family: inherit;
+            font-weight: bold; transition: background 0.2s;
+        }
+        #end-turn-btn:hover { background: #e53935; }
+        #menu-btn {
+            background: #444; border: none; color: #ccc; padding: 6px 14px;
+            border-radius: 4px; cursor: pointer; font-size: 13px; font-family: inherit;
+            margin-left: 8px; transition: background 0.2s;
+        }
+        #menu-btn:hover { background: #555; }
+
+        /* Main Area */
+        #main-area {
+            display: flex; height: calc(100vh - 44px - 120px);
+        }
+
+        /* Left Panel - Faction Overview */
+        #faction-panel {
+            width: 220px; background: rgba(15,15,30,0.95); border-right: 1px solid #333;
+            overflow-y: auto; padding: 12px; flex-shrink: 0;
+        }
+        #faction-panel h3 { color: #ffd700; font-size: 13px; margin-bottom: 10px; border-bottom: 1px solid #333; padding-bottom: 6px; }
+        .faction-row {
+            display: flex; align-items: center; padding: 5px 4px; border-radius: 4px;
+            margin-bottom: 2px; cursor: pointer; font-size: 12px; transition: background 0.2s;
+        }
+        .faction-row:hover { background: rgba(255,255,255,0.05); }
+        .faction-row.current { background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.3); }
+        .faction-row .f-color { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; flex-shrink: 0; }
+        .faction-row .f-name { flex: 1; }
+        .faction-row .f-stat { color: #888; font-size: 11px; }
+
+        .faction-detail { margin-top: 12px; font-size: 11px; }
+        .faction-detail h4 { color: #ffd700; margin-bottom: 6px; font-size: 12px; }
+        .faction-detail .stat-row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #222; }
+        .faction-detail .stat-label { color: #888; }
+        .faction-detail .stat-val { color: #e0e0e0; }
+
+        /* Map */
+        #map { flex: 1; cursor: crosshair; }
+        .leaflet-interactive { cursor: pointer !important; }
+
+        .city-marker {
+            border-radius: 50%; border: 2px solid rgba(255,255,255,0.8);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.6); transition: transform 0.15s;
+            position: relative;
+        }
+        .city-marker:hover { transform: scale(1.3); }
+        .city-marker.selected { border-color: #ffd700; box-shadow: 0 0 12px rgba(255,215,0,0.8); }
+        .city-label-game {
+            background: none !important; border: none !important; box-shadow: none !important;
+            font-size: 11px; font-weight: bold; color: #fff;
+            text-shadow: 2px 2px 3px #000, -1px -1px 2px #000, 1px -1px 2px #000, -1px 2px 2px #000;
+            white-space: nowrap;
+        }
+        .troop-badge {
+            background: none !important; border: none !important; box-shadow: none !important;
+            font-size: 9px; color: #ffcdd2; white-space: nowrap;
+            text-shadow: 1px 1px 2px #000, -1px -1px 2px #000;
+        }
+
+        /* Right Panel - City Management */
+        #city-panel {
+            width: 280px; background: rgba(15,15,30,0.95); border-left: 1px solid #333;
+            overflow-y: auto; padding: 14px; flex-shrink: 0;
+        }
+        #city-panel h3 { color: #ffd700; font-size: 15px; margin-bottom: 4px; }
+        #city-panel .city-owner { font-size: 12px; margin-bottom: 10px; }
+        .city-stats { margin-bottom: 12px; }
+        .city-stat-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 4px 0; border-bottom: 1px solid #222; font-size: 12px;
+        }
+        .city-stat-row .label { color: #888; }
+        .city-stat-row .value { font-weight: bold; }
+        .stat-bar-bg {
+            width: 80px; height: 6px; background: #333; border-radius: 3px; overflow: hidden;
+        }
+        .stat-bar { height: 100%; border-radius: 3px; transition: width 0.3s; }
+
+        .action-section { margin-top: 12px; }
+        .action-section h4 { color: #ffd700; font-size: 12px; margin-bottom: 8px; border-bottom: 1px solid #333; padding-bottom: 4px; }
+        .action-btn {
+            display: flex; justify-content: space-between; align-items: center;
+            width: 100%; background: rgba(255,255,255,0.05); border: 1px solid #444;
+            color: #e0e0e0; padding: 8px 12px; border-radius: 6px; cursor: pointer;
+            font-size: 12px; font-family: inherit; margin-bottom: 6px; transition: all 0.2s;
+        }
+        .action-btn:hover:not(:disabled) { background: rgba(255,215,0,0.1); border-color: #ffd700; }
+        .action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        .action-btn .cost { font-size: 10px; color: #aaa; }
+        .action-btn .acted { font-size: 10px; color: #f44336; }
+        .no-city-msg { color: #666; text-align: center; margin-top: 40px; font-size: 13px; }
+
+        /* Bottom - Event Log */
+        #event-log {
+            height: 120px; background: rgba(10,10,25,0.95); border-top: 1px solid #333;
+            overflow-y: auto; padding: 8px 14px; font-size: 11px;
+        }
+        #event-log .log-entry { padding: 2px 0; border-bottom: 1px solid #1a1a2e; }
+        #event-log .log-turn { color: #ffd700; font-weight: bold; margin-right: 6px; }
+        #event-log .log-text { color: #bbb; }
+        #event-log .log-good { color: #66bb6a; }
+        #event-log .log-bad { color: #ef5350; }
+        #event-log .log-info { color: #42a5f5; }
+
+        /* Popup overlay for Leaflet */
+        .leaflet-popup-content-wrapper { background: rgba(30,30,30,0.95); color: #fff; border-radius: 8px; }
+        .leaflet-popup-tip { background: rgba(30,30,30,0.95); }
+
+        /* Menu overlay */
+        #menu-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7); z-index: 5000;
+            align-items: center; justify-content: center;
+        }
+        #menu-overlay.active { display: flex; }
+        .menu-box {
+            background: #1a1a2e; border: 1px solid #444; border-radius: 12px;
+            padding: 30px; text-align: center; min-width: 300px;
+        }
+        .menu-box h2 { color: #ffd700; margin-bottom: 20px; }
+        .menu-box button {
+            display: block; width: 100%; background: rgba(255,255,255,0.05);
+            border: 1px solid #444; color: #e0e0e0; padding: 12px; margin-bottom: 8px;
+            border-radius: 6px; font-size: 14px; cursor: pointer; font-family: inherit;
+            transition: all 0.2s;
+        }
+        .menu-box button:hover { background: rgba(255,215,0,0.1); border-color: #ffd700; }
+
+        /* Turn transition overlay */
+        #turn-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 4000;
+            align-items: center; justify-content: center;
+        }
+        #turn-overlay.active { display: flex; }
+        #turn-overlay .turn-msg {
+            color: #ffd700; font-size: 28px; font-weight: bold;
+            text-shadow: 0 0 20px rgba(255,215,0,0.5);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #1a1a2e; }
+        ::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+    </style>
+</head>
+<body>
+
+<!-- ===== Title Screen ===== -->
+<div id="title-screen">
+    <h1>三國志</h1>
+    <div class="subtitle">전략 시뮬레이션</div>
+
+    <div class="scenario-select">
+        <h3>시나리오</h3>
+        <button class="scenario-btn active" data-scenario="190">190년 - 반동탁 연합</button>
+    </div>
+
+    <div class="faction-grid" id="faction-grid"></div>
+
+    <button id="start-btn" disabled onclick="startGame()">게임 시작</button>
+</div>
+
+<!-- ===== Game Screen ===== -->
+<div id="game-screen">
+    <!-- Top Bar -->
+    <div id="top-bar">
+        <div class="turn-info">
+            <span id="turn-date">190년 1월</span>
+            <span id="turn-season" class="season season-winter">겨울</span>
+        </div>
+        <div class="player-resources">
+            <span class="res-gold">금 <span class="val" id="res-gold">0</span></span>
+            <span class="res-food">식량 <span class="val" id="res-food">0</span></span>
+            <span class="res-troops">병력 <span class="val" id="res-troops">0</span></span>
+            <span class="res-cities">도시 <span class="val" id="res-cities">0</span></span>
+        </div>
+        <button id="end-turn-btn" onclick="endTurn()">턴 종료</button>
+        <button id="menu-btn" onclick="toggleMenu()">메뉴</button>
+    </div>
+
+    <!-- Main Area -->
+    <div id="main-area">
+        <!-- Left: Faction Panel -->
+        <div id="faction-panel">
+            <h3>세력 정보</h3>
+            <div id="faction-list"></div>
+            <div id="faction-detail" class="faction-detail"></div>
+        </div>
+
+        <!-- Center: Map -->
+        <div id="map"></div>
+
+        <!-- Right: City Panel -->
+        <div id="city-panel">
+            <div class="no-city-msg" id="no-city-msg">도시를 클릭하여<br>정보를 확인하세요</div>
+            <div id="city-info" style="display:none"></div>
+        </div>
+    </div>
+
+    <!-- Bottom: Event Log -->
+    <div id="event-log">
+        <div class="log-entry"><span class="log-turn">[시스템]</span><span class="log-text">게임을 시작합니다...</span></div>
+    </div>
+</div>
+
+<!-- Menu Overlay -->
+<div id="menu-overlay">
+    <div class="menu-box">
+        <h2>메뉴</h2>
+        <button onclick="toggleMenu()">게임으로 돌아가기</button>
+        <button onclick="location.reload()">타이틀로 돌아가기</button>
+    </div>
+</div>
+
+<!-- Turn Transition Overlay -->
+<div id="turn-overlay">
+    <div class="turn-msg" id="turn-msg"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="three-kingdoms-data.js"></script>
+<script>
+// ============================================================
+// GAME DATA CONSTANTS
+// ============================================================
+
+const GAME_CITIES = [
+    // 유주
+    { id: "bukpyeong", name: "北平", korean: "북평", region: "유주", lat: 39.90, lng: 116.40 },
+    { id: "gye", name: "蓟", korean: "계", region: "유주", lat: 39.70, lng: 116.10 },
+    // 병주
+    { id: "jinyang", name: "晋阳", korean: "진양", region: "병주", lat: 37.87, lng: 112.55 },
+    { id: "sangdang", name: "上党", korean: "상당", region: "병주", lat: 36.12, lng: 113.12 },
+    // 기주
+    { id: "eop", name: "邺", korean: "업", region: "기주", lat: 36.34, lng: 114.62 },
+    { id: "nampi", name: "南皮", korean: "남피", region: "기주", lat: 38.37, lng: 116.70 },
+    { id: "pyeongwon", name: "平原", korean: "평원", region: "기주", lat: 37.38, lng: 116.62 },
+    // 청주
+    { id: "imchi", name: "临淄", korean: "임치", region: "청주", lat: 36.70, lng: 118.48 },
+    { id: "bukhae", name: "北海", korean: "북해", region: "청주", lat: 36.78, lng: 119.17 },
+    // 연주
+    { id: "jinryu", name: "陈留", korean: "진류", region: "연주", lat: 34.85, lng: 114.35 },
+    { id: "bokyang", name: "濮阳", korean: "복양", region: "연주", lat: 35.76, lng: 115.03 },
+    // 서주
+    { id: "paengseong", name: "彭城", korean: "팽성", region: "서주", lat: 34.26, lng: 117.19 },
+    { id: "habi", name: "下邳", korean: "하비", region: "서주", lat: 34.32, lng: 117.95 },
+    { id: "sopae", name: "小沛", korean: "소패", region: "서주", lat: 34.72, lng: 116.93 },
+    { id: "gwangneung", name: "广陵", korean: "광릉", region: "서주", lat: 32.39, lng: 119.43 },
+    // 예주
+    { id: "heochang", name: "许昌", korean: "허창", region: "예주", lat: 34.02, lng: 113.85 },
+    { id: "yeonam", name: "汝南", korean: "여남", region: "예주", lat: 33.00, lng: 114.35 },
+    { id: "suchun", name: "寿春", korean: "수춘", region: "예주", lat: 32.57, lng: 116.78 },
+    { id: "wan", name: "宛", korean: "완", region: "예주", lat: 33.00, lng: 112.53 },
+    { id: "namyang", name: "南阳", korean: "남양", region: "예주", lat: 33.26, lng: 112.53 },
+    // 사예
+    { id: "nakyang", name: "洛阳", korean: "낙양", region: "사예", lat: 34.62, lng: 112.45 },
+    { id: "jangan", name: "长安", korean: "장안", region: "사예", lat: 34.27, lng: 108.95 },
+    // 양주(량)
+    { id: "cheonsu", name: "天水", korean: "천수", region: "양주(량)", lat: 34.58, lng: 105.90 },
+    { id: "muwi", name: "武威", korean: "무위", region: "양주(량)", lat: 37.93, lng: 102.63 },
+    { id: "anjeong", name: "安定", korean: "안정", region: "양주(량)", lat: 35.55, lng: 106.68 },
+    // 형주
+    { id: "yangyang", name: "襄阳", korean: "양양", region: "형주", lat: 32.01, lng: 112.13 },
+    { id: "gangneung", name: "江陵", korean: "강릉", region: "형주", lat: 30.35, lng: 112.24 },
+    { id: "gangha", name: "江夏", korean: "강하", region: "형주", lat: 30.58, lng: 114.30 },
+    { id: "jangsa", name: "长沙", korean: "장사", region: "형주", lat: 28.19, lng: 113.00 },
+    { id: "gyeyang", name: "桂阳", korean: "계양", region: "형주", lat: 25.78, lng: 113.05 },
+    { id: "yeongneung", name: "零陵", korean: "영릉", region: "형주", lat: 26.23, lng: 111.62 },
+    { id: "mureung", name: "武陵", korean: "무릉", region: "형주", lat: 29.05, lng: 111.70 },
+    { id: "sinya", name: "新野", korean: "신야", region: "형주", lat: 32.52, lng: 112.42 },
+    { id: "sangyong", name: "上庸", korean: "상용", region: "형주", lat: 32.22, lng: 110.23 },
+    // 익주
+    { id: "seongdo", name: "成都", korean: "성도", region: "익주", lat: 30.67, lng: 104.07 },
+    { id: "hanjung", name: "汉中", korean: "한중", region: "익주", lat: 33.07, lng: 107.03 },
+    { id: "jaedong", name: "梓潼", korean: "재동", region: "익주", lat: 31.64, lng: 105.17 },
+    { id: "nangjung", name: "阆中", korean: "낭중", region: "익주", lat: 31.58, lng: 105.97 },
+    { id: "gangju", name: "江州", korean: "강주", region: "익주", lat: 29.56, lng: 106.55 },
+    { id: "yeongan", name: "永安", korean: "영안", region: "익주", lat: 31.02, lng: 109.46 },
+    { id: "geonnyeong", name: "建宁", korean: "건녕", region: "익주", lat: 25.05, lng: 102.70 },
+    { id: "yeongchang", name: "永昌", korean: "영창", region: "익주", lat: 25.04, lng: 98.50 },
+    { id: "unnam", name: "云南", korean: "운남", region: "익주", lat: 25.52, lng: 100.58 },
+    // 양주(양)
+    { id: "geonup", name: "建业", korean: "건업", region: "양주", lat: 32.06, lng: 118.80 },
+    { id: "ogun", name: "吴郡", korean: "오군", region: "양주", lat: 31.30, lng: 120.62 },
+    { id: "hoegye", name: "会稽", korean: "회계", region: "양주", lat: 30.00, lng: 120.58 },
+    { id: "sisang", name: "柴桑", korean: "시상", region: "양주", lat: 29.73, lng: 115.99 },
+    { id: "yeogang", name: "庐江", korean: "여강", region: "양주", lat: 30.95, lng: 117.32 },
+    { id: "yejang", name: "豫章", korean: "예장", region: "양주", lat: 28.68, lng: 115.90 },
+    // 교주
+    { id: "beonu", name: "番禺", korean: "번우", region: "교주", lat: 23.13, lng: 113.27 },
+    { id: "gyoji", name: "交趾", korean: "교지", region: "교주", lat: 22.82, lng: 108.32 },
+];
+
+const FACTIONS = {
+    dongtak: { name: "동탁", chinese: "董卓", color: "#8e24aa", desc: "낙양의 폭군" },
+    jojo: { name: "조조", chinese: "曹操", color: "#1e88e5", desc: "난세의 간웅" },
+    yubi: { name: "유비", chinese: "刘备", color: "#43a047", desc: "인덕의 군주" },
+    songyeon: { name: "손견", chinese: "孙坚", color: "#e53935", desc: "강동의 맹호" },
+    wonso: { name: "원소", chinese: "袁绍", color: "#fdd835", desc: "하북의 명문" },
+    yupyo: { name: "유표", chinese: "刘表", color: "#ff8f00", desc: "형주의 수성자" },
+    yujang: { name: "유장", chinese: "刘璋", color: "#00897b", desc: "익주의 암우" },
+    madeung: { name: "마등", chinese: "马腾", color: "#6d4c41", desc: "서량의 철기" },
+    gongsonchan: { name: "공손찬", chinese: "公孙瓒", color: "#78909c", desc: "백마의 장군" },
+    wonsul: { name: "원술", chinese: "袁术", color: "#ab47bc", desc: "회남의 야심가" },
+};
+
+// 190년 시나리오: owner 할당 (null = 공백)
+const SCENARIO_190 = {
+    year: 190, month: 1,
+    cityOwners: {
+        // 동탁: 낙양, 장안
+        nakyang: "dongtak", jangan: "dongtak",
+        // 조조: 진류
+        jinryu: "jojo",
+        // 유비: 평원
+        pyeongwon: "yubi",
+        // 손견: 장사
+        jangsa: "songyeon",
+        // 원소: 남피
+        nampi: "wonso",
+        // 유표: 양양, 강릉, 강하, 무릉
+        yangyang: "yupyo", gangneung: "yupyo", gangha: "yupyo", mureung: "yupyo",
+        // 유장: 성도, 한중, 재동, 낭중, 강주, 영안, 건녕, 영창, 운남
+        seongdo: "yujang", hanjung: "yujang", jaedong: "yujang", nangjung: "yujang",
+        gangju: "yujang", yeongan: "yujang", geonnyeong: "yujang", yeongchang: "yujang", unnam: "yujang",
+        // 마등: 무위, 천수
+        muwi: "madeung", cheonsu: "madeung",
+        // 공손찬: 북평, 계
+        bukpyeong: "gongsonchan", gye: "gongsonchan",
+        // 원술: 수춘, 여남
+        suchun: "wonsul", yeonam: "wonsul",
+    },
+    // 기본 도시 스탯 오버라이드 (수도급 도시)
+    cityStats: {
+        nakyang: { population: 350000, gold: 8000, food: 15000, troops: 20000, development: 80, commerce: 75, defense: 70, loyalty: 40 },
+        jangan: { population: 300000, gold: 6000, food: 12000, troops: 15000, development: 75, commerce: 70, defense: 65, loyalty: 45 },
+        seongdo: { population: 280000, gold: 7000, food: 18000, troops: 12000, development: 70, commerce: 65, defense: 60, loyalty: 70 },
+        yangyang: { population: 200000, gold: 5000, food: 12000, troops: 10000, development: 65, commerce: 60, defense: 55, loyalty: 65 },
+        geonup: { population: 220000, gold: 5000, food: 10000, troops: 5000, development: 60, commerce: 65, defense: 50, loyalty: 50 },
+        eop: { population: 180000, gold: 3000, food: 8000, troops: 3000, development: 55, commerce: 50, defense: 50, loyalty: 50 },
+    },
+};
+
+// ============================================================
+// GAME STATE
+// ============================================================
+
+let gameState = null;
+let selectedFaction = null;
+let selectedCityId = null;
+let map = null;
+let cityMarkers = {};
+let cityLabels = {};
+let troopBadges = {};
+
+// ============================================================
+// TITLE SCREEN
+// ============================================================
+
+function initTitleScreen() {
+    const grid = document.getElementById('faction-grid');
+    grid.innerHTML = '';
+    for (const [fid, f] of Object.entries(FACTIONS)) {
+        const cityCount = Object.values(SCENARIO_190.cityOwners).filter(o => o === fid).length;
+        const card = document.createElement('div');
+        card.className = 'faction-card';
+        card.dataset.faction = fid;
+        card.innerHTML = `
+            <div class="lord" style="color:${f.color}">${f.name}</div>
+            <div style="font-size:12px; color:#888">${f.chinese}</div>
+            <div class="cities">${f.desc}<br>도시 ${cityCount}개</div>
+            <div class="color-bar" style="background:${f.color}"></div>
+        `;
+        card.onclick = () => selectFaction(fid);
+        grid.appendChild(card);
+    }
+}
+
+function selectFaction(fid) {
+    selectedFaction = fid;
+    document.querySelectorAll('.faction-card').forEach(c => c.classList.remove('selected'));
+    document.querySelector(`.faction-card[data-faction="${fid}"]`).classList.add('selected');
+    document.getElementById('start-btn').disabled = false;
+}
+
+// ============================================================
+// GAME INITIALIZATION
+// ============================================================
+
+function startGame() {
+    if (!selectedFaction) return;
+    document.getElementById('title-screen').style.display = 'none';
+    document.getElementById('game-screen').style.display = 'block';
+
+    initGameState();
+    initMap();
+    updateAllUI();
+    addLog('시스템', `${FACTIONS[selectedFaction].name}(으)로 게임을 시작합니다.`, 'info');
+}
+
+function initGameState() {
+    const sc = SCENARIO_190;
+    const cities = {};
+
+    for (const city of GAME_CITIES) {
+        const owner = sc.cityOwners[city.id] || null;
+        const override = sc.cityStats[city.id] || {};
+        cities[city.id] = {
+            id: city.id,
+            korean: city.korean,
+            name: city.name,
+            region: city.region,
+            lat: city.lat,
+            lng: city.lng,
+            owner: owner,
+            population: override.population || (owner ? 80000 + Math.floor(Math.random() * 60000) : 50000 + Math.floor(Math.random() * 30000)),
+            gold: override.gold || (owner ? 2000 + Math.floor(Math.random() * 2000) : 1000),
+            food: override.food || (owner ? 5000 + Math.floor(Math.random() * 5000) : 3000),
+            troops: override.troops || (owner ? 5000 + Math.floor(Math.random() * 5000) : 1000 + Math.floor(Math.random() * 2000)),
+            development: override.development || (owner ? 30 + Math.floor(Math.random() * 30) : 20 + Math.floor(Math.random() * 20)),
+            commerce: override.commerce || (owner ? 25 + Math.floor(Math.random() * 30) : 15 + Math.floor(Math.random() * 20)),
+            defense: override.defense || (owner ? 20 + Math.floor(Math.random() * 30) : 10 + Math.floor(Math.random() * 15)),
+            loyalty: override.loyalty || (owner ? 50 + Math.floor(Math.random() * 30) : 40),
+            acted: false,
+        };
+    }
+
+    // Faction resources (aggregate from cities)
+    const factions = {};
+    for (const [fid, f] of Object.entries(FACTIONS)) {
+        factions[fid] = { gold: 0, food: 0, totalTroops: 0, cityCount: 0 };
+    }
+    for (const c of Object.values(cities)) {
+        if (c.owner && factions[c.owner]) {
+            factions[c.owner].gold += c.gold;
+            factions[c.owner].food += c.food;
+            factions[c.owner].totalTroops += c.troops;
+            factions[c.owner].cityCount++;
+        }
+    }
+
+    gameState = {
+        year: sc.year,
+        month: sc.month,
+        turn: 1,
+        playerFaction: selectedFaction,
+        cities: cities,
+        factions: factions,
+        eliminated: [],
+    };
+}
+
+// ============================================================
+// MAP
+// ============================================================
+
+function initMap() {
+    map = L.map('map', { center: [33, 110], zoom: 5, minZoom: 4, maxZoom: 12 });
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '&copy; ESRI', maxZoom: 18
+    }).addTo(map);
+
+    for (const city of GAME_CITIES) {
+        createCityMarker(city.id);
+    }
+}
+
+function getCityColor(cityId) {
+    const city = gameState.cities[cityId];
+    if (!city.owner) return '#666';
+    return FACTIONS[city.owner]?.color || '#666';
+}
+
+function createCityMarker(cityId) {
+    const city = gameState.cities[cityId];
+    const color = getCityColor(cityId);
+    const size = city.owner ? 18 : 14;
+
+    const icon = L.divIcon({
+        className: '',
+        html: `<div class="city-marker" id="marker-${cityId}" style="width:${size}px;height:${size}px;background:${color};"></div>`,
+        iconSize: [size, size],
+        iconAnchor: [size/2, size/2],
+    });
+
+    const marker = L.marker([city.lat, city.lng], { icon: icon }).addTo(map);
+    marker.on('click', () => selectCity(cityId));
+    cityMarkers[cityId] = marker;
+
+    // City name label
+    const label = L.marker([city.lat, city.lng], {
+        icon: L.divIcon({
+            className: 'city-label-game',
+            html: city.korean,
+            iconSize: [60, 16],
+            iconAnchor: [30, -8],
+        }),
+        interactive: false,
+    }).addTo(map);
+    cityLabels[cityId] = label;
+
+    // Troop badge
+    const badge = L.marker([city.lat, city.lng], {
+        icon: L.divIcon({
+            className: 'troop-badge',
+            html: formatTroops(city.troops),
+            iconSize: [50, 14],
+            iconAnchor: [25, -20],
+        }),
+        interactive: false,
+    }).addTo(map);
+    troopBadges[cityId] = badge;
+}
+
+function updateCityMarker(cityId) {
+    const city = gameState.cities[cityId];
+    const color = getCityColor(cityId);
+    const size = city.owner ? 18 : 14;
+    const isSelected = (cityId === selectedCityId);
+
+    const el = document.getElementById(`marker-${cityId}`);
+    if (el) {
+        el.style.width = size + 'px';
+        el.style.height = size + 'px';
+        el.style.background = color;
+        if (isSelected) {
+            el.classList.add('selected');
+        } else {
+            el.classList.remove('selected');
+        }
+    }
+
+    // Update troop badge
+    if (troopBadges[cityId]) {
+        troopBadges[cityId].setIcon(L.divIcon({
+            className: 'troop-badge',
+            html: formatTroops(city.troops),
+            iconSize: [50, 14],
+            iconAnchor: [25, -20],
+        }));
+    }
+}
+
+// ============================================================
+// CITY SELECTION & PANEL
+// ============================================================
+
+function selectCity(cityId) {
+    const prevId = selectedCityId;
+    selectedCityId = cityId;
+    if (prevId) updateCityMarker(prevId);
+    updateCityMarker(cityId);
+    updateCityPanel();
+}
+
+function updateCityPanel() {
+    const noCityMsg = document.getElementById('no-city-msg');
+    const cityInfo = document.getElementById('city-info');
+
+    if (!selectedCityId) {
+        noCityMsg.style.display = 'block';
+        cityInfo.style.display = 'none';
+        return;
+    }
+
+    noCityMsg.style.display = 'none';
+    cityInfo.style.display = 'block';
+
+    const city = gameState.cities[selectedCityId];
+    const ownerName = city.owner ? FACTIONS[city.owner].name : '공백지';
+    const ownerColor = city.owner ? FACTIONS[city.owner].color : '#666';
+    const isPlayerCity = city.owner === gameState.playerFaction;
+
+    const goldIncome = calcGoldIncome(city);
+    const foodIncome = calcFoodIncome(city);
+    const troopCostGold = Math.floor(city.troops * 0.1);
+    const troopCostFood = Math.floor(city.troops * 0.5);
+
+    cityInfo.innerHTML = `
+        <h3>${city.korean} (${city.name})</h3>
+        <div class="city-owner" style="color:${ownerColor}">${ownerName} | ${city.region}</div>
+
+        <div class="city-stats">
+            ${statRow('인구', formatNum(city.population), '')}
+            ${statRow('금', formatNum(city.gold), `+${formatNum(goldIncome)}/턴`, '#ffd700')}
+            ${statRow('식량', formatNum(city.food), `+${formatNum(foodIncome)}/턴`, '#8bc34a')}
+            ${statRow('병력', formatNum(city.troops), `-금${formatNum(troopCostGold)} -식${formatNum(troopCostFood)}`, '#f44336')}
+            ${barRow('개발', city.development, '#4caf50')}
+            ${barRow('상업', city.commerce, '#ff9800')}
+            ${barRow('방어', city.defense, '#2196f3')}
+            ${barRow('충성', city.loyalty, '#e91e63')}
+        </div>
+
+        ${isPlayerCity ? actionsHTML(city) : '<div style="color:#888;text-align:center;margin-top:20px;font-size:12px;">자신의 도시만 관리할 수 있습니다</div>'}
+    `;
+}
+
+function statRow(label, value, sub, color) {
+    return `<div class="city-stat-row">
+        <span class="label">${label}</span>
+        <span>
+            <span class="value" ${color ? `style="color:${color}"` : ''}>${value}</span>
+            ${sub ? `<span style="font-size:10px;color:#888;margin-left:4px;">${sub}</span>` : ''}
+        </span>
+    </div>`;
+}
+
+function barRow(label, value, color) {
+    return `<div class="city-stat-row">
+        <span class="label">${label}</span>
+        <span style="display:flex;align-items:center;gap:8px;">
+            <span class="value" style="width:28px;text-align:right;">${value}</span>
+            <div class="stat-bar-bg"><div class="stat-bar" style="width:${value}%;background:${color};"></div></div>
+        </span>
+    </div>`;
+}
+
+function actionsHTML(city) {
+    if (city.acted) {
+        return `<div class="action-section">
+            <h4>행동</h4>
+            <div style="color:#f44336;text-align:center;font-size:12px;padding:10px;">이번 턴 행동 완료</div>
+        </div>`;
+    }
+
+    const gs = gameState;
+    const canDev = city.gold >= 500 && city.development < 100;
+    const canCom = city.gold >= 500 && city.commerce < 100;
+    const canDef = city.gold >= 800 && city.defense < 100;
+    const canRecruit = city.gold >= 300 && city.food >= 500 && city.population >= 5000;
+
+    return `<div class="action-section">
+        <h4>행동 (턴당 1회)</h4>
+        <button class="action-btn" ${canDev ? '' : 'disabled'} onclick="doAction('${city.id}','develop')">
+            <span>개발 (개발+5)</span><span class="cost">금 500</span>
+        </button>
+        <button class="action-btn" ${canCom ? '' : 'disabled'} onclick="doAction('${city.id}','commerce')">
+            <span>상업 (상업+5)</span><span class="cost">금 500</span>
+        </button>
+        <button class="action-btn" ${canDef ? '' : 'disabled'} onclick="doAction('${city.id}','defense')">
+            <span>방비 (방어+5)</span><span class="cost">금 800</span>
+        </button>
+        <button class="action-btn" ${canRecruit ? '' : 'disabled'} onclick="doAction('${city.id}','recruit')">
+            <span>징병 (병력+1000)</span><span class="cost">금300 식500</span>
+        </button>
+    </div>`;
+}
+
+// ============================================================
+// CITY ACTIONS
+// ============================================================
+
+function doAction(cityId, action) {
+    const city = gameState.cities[cityId];
+    if (!city || city.owner !== gameState.playerFaction || city.acted) return;
+
+    switch(action) {
+        case 'develop':
+            if (city.gold < 500 || city.development >= 100) return;
+            city.gold -= 500;
+            city.development = Math.min(100, city.development + 5);
+            city.acted = true;
+            addLog(city.korean, `개발 실시 (개발 ${city.development - 5} → ${city.development})`, 'good');
+            break;
+        case 'commerce':
+            if (city.gold < 500 || city.commerce >= 100) return;
+            city.gold -= 500;
+            city.commerce = Math.min(100, city.commerce + 5);
+            city.acted = true;
+            addLog(city.korean, `상업 투자 (상업 ${city.commerce - 5} → ${city.commerce})`, 'good');
+            break;
+        case 'defense':
+            if (city.gold < 800 || city.defense >= 100) return;
+            city.gold -= 800;
+            city.defense = Math.min(100, city.defense + 5);
+            city.acted = true;
+            addLog(city.korean, `방비 강화 (방어 ${city.defense - 5} → ${city.defense})`, 'good');
+            break;
+        case 'recruit':
+            if (city.gold < 300 || city.food < 500 || city.population < 5000) return;
+            city.gold -= 300;
+            city.food -= 500;
+            city.troops += 1000;
+            city.population -= 1000;
+            city.acted = true;
+            addLog(city.korean, `징병 실시 (병력 +1000, 현재 ${formatNum(city.troops)})`, 'good');
+            break;
+    }
+
+    updateCityPanel();
+    updateCityMarker(cityId);
+    updateTopBar();
+    updateFactionPanel();
+}
+
+// ============================================================
+// ECONOMY ENGINE
+// ============================================================
+
+function getSeason(month) {
+    if (month >= 3 && month <= 5) return { name: '봄', class: 'season-spring', foodMod: 1.0 };
+    if (month >= 6 && month <= 8) return { name: '여름', class: 'season-summer', foodMod: 1.2 };
+    if (month >= 9 && month <= 11) return { name: '가을', class: 'season-autumn', foodMod: 1.5 };
+    return { name: '겨울', class: 'season-winter', foodMod: 0.5 };
+}
+
+function calcGoldIncome(city) {
+    return Math.floor(city.population / 1000 * city.commerce / 100 * 2);
+}
+
+function calcFoodIncome(city) {
+    const season = getSeason(gameState.month);
+    return Math.floor(city.population / 1000 * city.development / 100 * 3 * season.foodMod);
+}
+
+function processTurnEconomy() {
+    const season = getSeason(gameState.month);
+
+    for (const city of Object.values(gameState.cities)) {
+        if (!city.owner) continue;
+
+        // Income
+        const goldIncome = calcGoldIncome(city);
+        const foodIncome = calcFoodIncome(city);
+        city.gold += goldIncome;
+        city.food += foodIncome;
+
+        // Troop maintenance
+        const troopCostGold = Math.floor(city.troops * 0.1);
+        const troopCostFood = Math.floor(city.troops * 0.5);
+        city.gold -= troopCostGold;
+        city.food -= troopCostFood;
+
+        // Gold minimum 0
+        if (city.gold < 0) city.gold = 0;
+
+        // Food shortage → desertion
+        if (city.food < 0) {
+            const deserted = Math.min(city.troops, Math.floor(Math.abs(city.food) / 0.5));
+            const actualDesert = Math.max(100, Math.floor(deserted * 0.3));
+            city.troops = Math.max(0, city.troops - actualDesert);
+            city.food = 0;
+            city.loyalty = Math.max(0, city.loyalty - 5);
+            if (city.owner === gameState.playerFaction) {
+                addLog(city.korean, `식량 부족! 병사 ${formatNum(actualDesert)}명 탈영, 충성도 하락`, 'bad');
+            }
+        }
+
+        // Population growth (small)
+        if (city.food > 0 && city.loyalty > 30) {
+            city.population += Math.floor(city.population * 0.002);
+        }
+
+        // Loyalty drift toward 50 if no action
+        if (city.loyalty < 50) city.loyalty = Math.min(50, city.loyalty + 1);
+        if (city.loyalty > 80) city.loyalty = Math.max(80, city.loyalty - 1);
+
+        // Reset acted
+        city.acted = false;
+    }
+}
+
+// ============================================================
+// AI
+// ============================================================
+
+function processAITurns() {
+    for (const [fid, faction] of Object.entries(FACTIONS)) {
+        if (fid === gameState.playerFaction) continue;
+        if (gameState.eliminated.includes(fid)) continue;
+
+        const myCities = Object.values(gameState.cities).filter(c => c.owner === fid);
+        if (myCities.length === 0) {
+            if (!gameState.eliminated.includes(fid)) {
+                gameState.eliminated.push(fid);
+                addLog('시스템', `${faction.name} 세력이 멸망했습니다!`, 'bad');
+            }
+            continue;
+        }
+
+        for (const city of myCities) {
+            if (city.acted) continue;
+
+            // AI logic: prioritize based on needs
+            if (city.troops < 3000 && city.gold >= 300 && city.food >= 500 && city.population >= 5000) {
+                // Recruit
+                city.gold -= 300;
+                city.food -= 500;
+                city.troops += 1000;
+                city.population -= 1000;
+                city.acted = true;
+            } else if (city.development < 50 && city.gold >= 500) {
+                // Develop
+                city.gold -= 500;
+                city.development = Math.min(100, city.development + 5);
+                city.acted = true;
+            } else if (city.commerce < 50 && city.gold >= 500) {
+                // Commerce
+                city.gold -= 500;
+                city.commerce = Math.min(100, city.commerce + 5);
+                city.acted = true;
+            } else if (city.defense < 40 && city.gold >= 800) {
+                // Defense
+                city.gold -= 800;
+                city.defense = Math.min(100, city.defense + 5);
+                city.acted = true;
+            } else if (city.gold >= 500) {
+                // Random between develop and commerce
+                if (Math.random() < 0.5 && city.development < 100) {
+                    city.gold -= 500;
+                    city.development = Math.min(100, city.development + 5);
+                    city.acted = true;
+                } else if (city.commerce < 100) {
+                    city.gold -= 500;
+                    city.commerce = Math.min(100, city.commerce + 5);
+                    city.acted = true;
+                }
+            }
+        }
+    }
+}
+
+// ============================================================
+// TURN SYSTEM
+// ============================================================
+
+function endTurn() {
+    // Show transition
+    const turnOverlay = document.getElementById('turn-overlay');
+    const turnMsg = document.getElementById('turn-msg');
+    turnOverlay.classList.add('active');
+    turnMsg.textContent = '턴 처리 중...';
+
+    setTimeout(() => {
+        // 1. AI actions
+        processAITurns();
+
+        // 2. Economy
+        processTurnEconomy();
+
+        // 3. Advance month
+        gameState.month++;
+        if (gameState.month > 12) {
+            gameState.month = 1;
+            gameState.year++;
+        }
+        gameState.turn++;
+
+        // 4. Check player elimination
+        const playerCities = Object.values(gameState.cities).filter(c => c.owner === gameState.playerFaction);
+        if (playerCities.length === 0) {
+            addLog('시스템', '모든 도시를 잃었습니다. 게임 오버!', 'bad');
+        }
+
+        // 5. Recalculate faction aggregates
+        recalcFactions();
+
+        // 6. Season log
+        const season = getSeason(gameState.month);
+        if (gameState.month === 1) {
+            addLog('시스템', `${gameState.year}년이 시작되었습니다.`, 'info');
+        }
+
+        // Update UI
+        updateAllUI();
+
+        turnMsg.textContent = `${gameState.year}년 ${gameState.month}월 (${season.name})`;
+        setTimeout(() => {
+            turnOverlay.classList.remove('active');
+        }, 800);
+    }, 300);
+}
+
+function recalcFactions() {
+    for (const fid of Object.keys(FACTIONS)) {
+        gameState.factions[fid] = { gold: 0, food: 0, totalTroops: 0, cityCount: 0 };
+    }
+    for (const c of Object.values(gameState.cities)) {
+        if (c.owner && gameState.factions[c.owner]) {
+            gameState.factions[c.owner].gold += c.gold;
+            gameState.factions[c.owner].food += c.food;
+            gameState.factions[c.owner].totalTroops += c.troops;
+            gameState.factions[c.owner].cityCount++;
+        }
+    }
+}
+
+// ============================================================
+// UI UPDATES
+// ============================================================
+
+function updateAllUI() {
+    updateTopBar();
+    updateFactionPanel();
+    updateCityPanel();
+    for (const cityId of Object.keys(gameState.cities)) {
+        updateCityMarker(cityId);
+    }
+}
+
+function updateTopBar() {
+    const season = getSeason(gameState.month);
+    document.getElementById('turn-date').textContent = `${gameState.year}년 ${gameState.month}월`;
+    const seasonEl = document.getElementById('turn-season');
+    seasonEl.textContent = season.name;
+    seasonEl.className = `season ${season.class}`;
+
+    // Player totals
+    recalcFactions();
+    const pf = gameState.factions[gameState.playerFaction];
+    document.getElementById('res-gold').textContent = formatNum(pf.gold);
+    document.getElementById('res-food').textContent = formatNum(pf.food);
+    document.getElementById('res-troops').textContent = formatNum(pf.totalTroops);
+    document.getElementById('res-cities').textContent = pf.cityCount;
+}
+
+function updateFactionPanel() {
+    recalcFactions();
+    const listEl = document.getElementById('faction-list');
+    const detailEl = document.getElementById('faction-detail');
+
+    // Sort factions by city count desc
+    const sorted = Object.entries(FACTIONS).sort((a, b) => {
+        return (gameState.factions[b[0]]?.cityCount || 0) - (gameState.factions[a[0]]?.cityCount || 0);
+    });
+
+    let html = '';
+    for (const [fid, f] of sorted) {
+        const fd = gameState.factions[fid];
+        const isCurrent = fid === gameState.playerFaction;
+        const isEliminated = gameState.eliminated.includes(fid);
+        html += `<div class="faction-row ${isCurrent ? 'current' : ''}" style="${isEliminated ? 'opacity:0.3;' : ''}">
+            <span class="f-color" style="background:${f.color}"></span>
+            <span class="f-name">${f.name}${isCurrent ? ' (나)' : ''}</span>
+            <span class="f-stat">${fd.cityCount}城 ${formatTroops(fd.totalTroops)}</span>
+        </div>`;
+    }
+    listEl.innerHTML = html;
+
+    // Detail for player
+    const pf = gameState.factions[gameState.playerFaction];
+    const playerCities = Object.values(gameState.cities).filter(c => c.owner === gameState.playerFaction);
+    const totalGoldIncome = playerCities.reduce((s, c) => s + calcGoldIncome(c), 0);
+    const totalFoodIncome = playerCities.reduce((s, c) => s + calcFoodIncome(c), 0);
+    const totalTroopCostGold = playerCities.reduce((s, c) => s + Math.floor(c.troops * 0.1), 0);
+    const totalTroopCostFood = playerCities.reduce((s, c) => s + Math.floor(c.troops * 0.5), 0);
+
+    detailEl.innerHTML = `
+        <h4>${FACTIONS[gameState.playerFaction].name} 세력</h4>
+        <div class="stat-row"><span class="stat-label">도시</span><span class="stat-val">${pf.cityCount}개</span></div>
+        <div class="stat-row"><span class="stat-label">총 금</span><span class="stat-val" style="color:#ffd700">${formatNum(pf.gold)}</span></div>
+        <div class="stat-row"><span class="stat-label">금 수입</span><span class="stat-val" style="color:#ffd700">+${formatNum(totalGoldIncome)}/턴</span></div>
+        <div class="stat-row"><span class="stat-label">금 지출</span><span class="stat-val" style="color:#f44336">-${formatNum(totalTroopCostGold)}/턴</span></div>
+        <div class="stat-row"><span class="stat-label">총 식량</span><span class="stat-val" style="color:#8bc34a">${formatNum(pf.food)}</span></div>
+        <div class="stat-row"><span class="stat-label">식량 수입</span><span class="stat-val" style="color:#8bc34a">+${formatNum(totalFoodIncome)}/턴</span></div>
+        <div class="stat-row"><span class="stat-label">식량 지출</span><span class="stat-val" style="color:#f44336">-${formatNum(totalTroopCostFood)}/턴</span></div>
+        <div class="stat-row"><span class="stat-label">총 병력</span><span class="stat-val" style="color:#ef5350">${formatNum(pf.totalTroops)}</span></div>
+    `;
+}
+
+// ============================================================
+// EVENT LOG
+// ============================================================
+
+function addLog(source, text, type) {
+    const logEl = document.getElementById('event-log');
+    const cls = type === 'good' ? 'log-good' : type === 'bad' ? 'log-bad' : type === 'info' ? 'log-info' : 'log-text';
+    const turnLabel = gameState ? `${gameState.year}년 ${gameState.month}월` : source;
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    entry.innerHTML = `<span class="log-turn">[${turnLabel}]</span> <span class="${cls}">${source !== '시스템' ? `[${source}] ` : ''}${text}</span>`;
+    logEl.appendChild(entry);
+    logEl.scrollTop = logEl.scrollHeight;
+}
+
+// ============================================================
+// MENU
+// ============================================================
+
+function toggleMenu() {
+    document.getElementById('menu-overlay').classList.toggle('active');
+}
+
+// ============================================================
+// UTILITIES
+// ============================================================
+
+function formatNum(n) {
+    if (n === undefined || n === null) return '0';
+    return n.toLocaleString();
+}
+
+function formatTroops(n) {
+    if (n >= 10000) return (n / 10000).toFixed(1) + '만';
+    if (n >= 1000) return (n / 1000).toFixed(1) + '천';
+    return String(n);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+
+initTitleScreen();
+</script>
+</body>
+</html>
